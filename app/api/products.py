@@ -393,8 +393,44 @@ async def api_generate_description(
     title_cn: str = Form(...),
     keywords_cn: str = Form(""),
     category: str = Form(""),
+    image_files: list[UploadFile] = File(default_factory=list),
 ):
-    """AI 生成俄语商品描述 + 关键词（DeepSeek）"""
+    """AI 生成俄语商品描述 + 关键词。
+    如果没有图片，用 DeepSeek 翻译。
+    如果有图片，用豆包(Doubao)多模态生成。
+    """
+    # Check if Doubao is configured and images are provided
+    from app.config import settings
+
+    if image_files and settings.DOUBAO_API_KEY:
+        # Save uploaded images temporarily for Doubao
+        import tempfile
+        import uuid as uuid_module
+
+        temp_paths = []
+        for f in image_files:
+            if f.filename and f.size and f.size > 0:
+                content = await f.read()
+                tmp = Path(tempfile.gettempdir()) / f"ozon_{uuid_module.uuid4().hex}.jpg"
+                tmp.write_bytes(content)
+                temp_paths.append(str(tmp))
+
+        if temp_paths:
+            from app.services.doubao_service import doubao_ozon_listing
+            try:
+                result = await doubao_ozon_listing(temp_paths, title_cn)
+                # Cleanup temp files
+                for p in temp_paths:
+                    Path(p).unlink(missing_ok=True)
+                if "error" not in result:
+                    return result
+            except Exception as e:
+                logger.exception("Doubao failed, falling back to DeepSeek")
+            finally:
+                for p in temp_paths:
+                    Path(p).unlink(missing_ok=True)
+
+    # Fallback to DeepSeek
     from app.services.translation import generate_ozon_description
     try:
         result = await generate_ozon_description(title_cn, keywords_cn, category)

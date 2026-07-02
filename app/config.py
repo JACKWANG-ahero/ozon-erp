@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/anthropic"
 
+    # ── Doubao (豆包) Multimodal Translation ─────────────────
+    DOUBAO_API_KEY: str = ""
+    DOUBAO_BASE_URL: str = "https://ark.cn-beijing.volces.com/api/v3"
+    DOUBAO_MODEL: str = "doubao-seed-1-8-251228"
+
     # ── GitHub CDN (图片公网访问) ──────────────────────────
     GITHUB_TOKEN: str = ""
     GITHUB_OWNER: str = ""
