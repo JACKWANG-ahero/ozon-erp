@@ -172,3 +172,109 @@ class TranslationService:
 
 class TranslationError(Exception):
     """Raised when translation fails."""
+
+
+async def translate_text(text: str, target: str = "ru") -> str:
+    """Simple text translation: Chinese → Russian using DeepSeek."""
+    # Filter wholesale/supply terms from Chinese text
+    banned_cn = ["批发", "货源", "供应商", "厂家", "工厂", "一手", "拿货", "进货", "代理"]
+    for w in banned_cn:
+        text = text.replace(w, "")
+    if not settings.DEEPSEEK_API_KEY:
+        return text  # Return original if not configured
+
+    prompt = f"Translate the following Chinese text to Russian. Return ONLY the translation, no explanation:\n\n{text}"
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            f"{settings.DEEPSEEK_BASE_URL}/v1/messages",
+            headers={
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "deepseek-chat",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 500,
+                "temperature": 0.3,
+            },
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            return data["content"][0]["text"].strip()
+        logger.error("Translation failed: %s", resp.text[:300])
+        return text
+
+
+async def generate_ozon_description(
+    title_cn: str,
+    keywords_cn: str = "",
+    category: str = "",
+) -> dict[str, str]:
+    """Generate Russian product description and keywords for Ozon using DeepSeek."""
+    if not settings.DEEPSEEK_API_KEY:
+        return {
+            "title_ru": title_cn,
+            "description_ru": f"<p>{title_cn}</p>",
+            "keywords": "",
+        }
+
+    kw_text = f"\n关键词提示: {keywords_cn}" if keywords_cn else ""
+    cat_text = f"\n类目: {category}" if category else ""
+
+    prompt = f"""你是Ozon俄罗斯电商平台的资深运营专家。为以下商品生成俄语标题、描述和关键词。
+
+商品中文名称: {title_cn}{cat_text}{kw_text}
+
+要求：
+1. title_ru: 俄语标题，≤500字符。
+   - 核心词"набор для вышивки"必须放在最前面，平台才能识别品类
+   - 遵循俄语自然语序，不可逐字直译导致逻辑颠倒（如"带刺绣的刺猬"是错误的）
+   - 格式：Набор для вышивки + 图案主题 + 尺寸29 см + 技法 + 受众
+   - 标题中必须包含尺寸"29 см"
+
+2. description_ru: 俄语描述，200-500字符，HTML格式(<p>...</p>)。
+   - 专业词汇：绣绷用"пяльцы"，不要用"рамка"（那是成品装饰画框）
+   - 不要用"полуфабрикат"（半成品），用"готовый набор"或"комплект"
+   - 语气面向C端个人买家，亲切自然
+
+3. keywords: 俄语关键词，5-10个，以#隔开。
+   - 第一个必须是 #набор_для_вышивки
+
+严格禁止（面向个人消费者禁用）：
+оптовая продажа, оптом, оптовый, оптовой, оптовый источник,
+поставщик, поставка, производитель, фабрика, производство,
+полуфабрикат, рамка, заготовка
+
+严格输出JSON，不要其他内容：
+{{"title_ru": "...", "description_ru": "<p>...</p>", "keywords": "#tag1 #tag2 ..."}}"""
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(
+            f"{settings.DEEPSEEK_BASE_URL}/v1/messages",
+            headers={
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "deepseek-chat",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 1000,
+                "temperature": 0.7,
+            },
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            content = data["content"][0]["text"].strip()
+            # Parse JSON from response
+            if content.startswith("```"):
+                lines = content.split("\n")
+                lines = [l for l in lines if not l.startswith("```")]
+                content = "\n".join(lines)
+            return json.loads(content)
+        logger.error("Description generation failed: %s", resp.text[:300])
+        return {
+            "title_ru": title_cn,
+            "description_ru": f"<p>{title_cn}</p>",
+            "keywords": "",
+        }

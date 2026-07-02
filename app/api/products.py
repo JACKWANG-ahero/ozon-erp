@@ -374,6 +374,81 @@ async def product_restore(
     return RedirectResponse(url="/products/?status=deleted", status_code=303)
 
 
+@router.post("/api/translate")
+async def api_translate(
+    text: str = Form(...),
+    target: str = Form("ru"),
+):
+    """翻译中文→俄语（DeepSeek）"""
+    from app.services.translation import translate_text
+    try:
+        result = await translate_text(text, target)
+        return {"translated": result}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.post("/api/generate-description")
+async def api_generate_description(
+    title_cn: str = Form(...),
+    keywords_cn: str = Form(""),
+    category: str = Form(""),
+):
+    """AI 生成俄语商品描述 + 关键词（DeepSeek）"""
+    from app.services.translation import generate_ozon_description
+    try:
+        result = await generate_ozon_description(title_cn, keywords_cn, category)
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.post("/api/resize-image")
+async def api_resize_image(
+    file: UploadFile = File(...),
+    target_ratio: str = Form("3:4"),
+):
+    """将上传图片裁剪为指定比例（默认3:4 Ozon要求）"""
+    from PIL import Image
+    import io, uuid as uuid_module
+    from pathlib import Path
+
+    try:
+        content = await file.read()
+        img = Image.open(io.BytesIO(content))
+        # Parse ratio
+        w_ratio, h_ratio = map(int, target_ratio.split(":"))
+        target_w = img.width
+        target_h = int(target_w * h_ratio / w_ratio)
+
+        if target_h > img.height:
+            target_h = img.height
+            target_w = int(target_h * w_ratio / h_ratio)
+
+        # Center crop
+        left = (img.width - target_w) // 2
+        top = (img.height - target_h) // 2
+        cropped = img.crop((left, top, left + target_w, top + target_h))
+
+        # Save
+        upload_dir = Path("app/static/uploads")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = f"{uuid_module.uuid4().hex}.jpg"
+        out_path = upload_dir / safe_name
+        cropped = cropped.convert("RGB")
+        cropped.save(out_path, "JPEG", quality=90)
+
+        return {
+            "url": f"/static/uploads/{safe_name}",
+            "width": target_w,
+            "height": target_h,
+            "original_width": img.width,
+            "original_height": img.height,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @router.get("/api/calculate-price")
 async def api_calculate_price(
     purchase_cost: float = Query(..., gt=0),
