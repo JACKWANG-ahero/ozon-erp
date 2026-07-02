@@ -378,8 +378,33 @@ async def product_restore(
 async def api_translate(
     text: str = Form(...),
     target: str = Form("ru"),
+    image_files: list[UploadFile] = File(default_factory=list),
 ):
-    """翻译中文→俄语（DeepSeek）"""
+    """翻译中文→俄语标题。有图片用豆包多模态，无图片用DeepSeek。"""
+    from app.config import settings as app_settings
+    # Doubao multimodal if images available
+    if image_files and app_settings.DOUBAO_API_KEY:
+        import tempfile
+        from pathlib import Path
+        import uuid as uuid_module
+        temp_paths = []
+        for f in image_files:
+            if f.filename and f.size and f.size > 0:
+                c = await f.read()
+                tmp = Path(tempfile.gettempdir()) / f"ozon_{uuid_module.uuid4().hex}.jpg"
+                tmp.write_bytes(c)
+                temp_paths.append(str(tmp))
+        if temp_paths:
+            from app.services.doubao_service import doubao_translate_title
+            try:
+                result = await doubao_translate_title(temp_paths, text)
+                for p in temp_paths: Path(p).unlink(missing_ok=True)
+                return {"translated": result}
+            except Exception as e:
+                for p in temp_paths: Path(p).unlink(missing_ok=True)
+                logger.exception("Doubao translate failed")
+
+    # Fallback to DeepSeek
     from app.services.translation import translate_text
     try:
         result = await translate_text(text, target)
@@ -417,13 +442,13 @@ async def api_generate_description(
                 temp_paths.append(str(tmp))
 
         if temp_paths:
-            from app.services.doubao_service import doubao_ozon_listing
+            from app.services.doubao_service import doubao_generate_description
             try:
-                result = await doubao_ozon_listing(temp_paths, title_cn)
-                # Cleanup temp files
+                result = await doubao_generate_description(temp_paths, title_cn)
                 for p in temp_paths:
                     Path(p).unlink(missing_ok=True)
                 if "error" not in result:
+                    result["keywords"] = _normalize_keywords(result.get("keywords", ""))
                     return result
             except Exception as e:
                 logger.exception("Doubao failed, falling back to DeepSeek")
@@ -435,9 +460,38 @@ async def api_generate_description(
     from app.services.translation import generate_ozon_description
     try:
         result = await generate_ozon_description(title_cn, keywords_cn, category)
+        result["keywords"] = _normalize_keywords(result.get("keywords", ""))
         return result
     except Exception as e:
         return {"error": str(e)}
+
+
+def _normalize_keywords(kw_str: str) -> str:
+    """Normalize keywords to Ozon format: no underscores, no spaces, слитно."""
+    kws = [k.strip().replace("_", "").replace(" ", "") for k in kw_str.split("#") if k.strip()]
+    # Deduplicate while preserving order
+    seen = set()
+    unique = []
+    for k in kws:
+        if k.lower() not in seen:
+            seen.add(k.lower())
+            unique.append(k)
+    # Ensure minimum 15
+    if len(unique) < 15:
+        extras = ["набордлявышивки","объемнаявышивка","вышивкагладью",
+            "вышивкасвоимируками","круглыепяльцы20см","деревяннаяподставкадляпялец",
+            "цветныениткисмаркировкой","канвасрисунком","рукоделиедляначинающих",
+            "DIYрукоделие","полныйкомплектвышивки","настольныйдекор","настенныйдекор",
+            "подарокручнойработы","вышивка29см","простоехобби","поделкисвоимируками",
+            "домашнийукрашение","цветочныемотивы","зоомотивы","ручнаяработа",
+            "уютныйдом","сделайсам","творческийподарок","пошаговаяинструкция"]
+        for e in extras:
+            if e.lower() not in seen:
+                seen.add(e.lower())
+                unique.append(e)
+                if len(unique) >= 20:
+                    break
+    return "#" + " #".join(unique[:30])
 
 
 @router.post("/api/resize-image")
