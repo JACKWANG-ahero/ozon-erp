@@ -175,15 +175,24 @@ class TranslationError(Exception):
 
 
 async def translate_text(text: str, target: str = "ru") -> str:
-    """Simple text translation: Chinese → Russian using DeepSeek."""
-    # Filter wholesale/supply terms from Chinese text
-    banned_cn = ["批发", "货源", "供应商", "厂家", "工厂", "一手", "拿货", "进货", "代理"]
+    """Translate product title: Chinese → Russian (Ozon-optimized)."""
+    # Filter wholesale/supply/retail terms from Chinese
+    banned_cn = ["批发", "货源", "供应商", "厂家", "工厂", "一手", "拿货", "进货", "代理", "桌面相框", "相框摆件", "摆件", "半成品"]
     for w in banned_cn:
         text = text.replace(w, "")
     if not settings.DEEPSEEK_API_KEY:
-        return text  # Return original if not configured
+        return text
 
-    prompt = f"Translate the following Chinese text to Russian. Return ONLY the translation, no explanation:\n\n{text}"
+    prompt = f"""将此中文商品标题翻译为Ozon平台俄语标题。翻译规则：
+
+1. 标题以"Набор для вышивки"或"Полный набор вышивки"开头
+2. 图案描述用"рисунок с [主体]"，不是"[主体] с вышивкой"
+3. 绣绷翻译为"пяльцы"，不是"рамка"
+4. 禁止：оптовая, оптом, полуфабрикат, рамка, поставщик, источник, фоторамка, настольная рамка
+5. 格式：品类 + 图案 + 尺寸29см + 技法 + 受众
+6. 只返回翻译标题，不要解释
+
+中文: {text}"""
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.post(
