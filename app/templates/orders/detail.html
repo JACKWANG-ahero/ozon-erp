@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}订单 {{ order.ozon_posting_number }} — Ozon ERP{% endblock %}
+{% block content %}
+
+<div class="mb-6">
+    <a href="/orders/" class="text-sm text-blue-600 hover:underline">← 返回订单列表</a>
+    <div class="flex items-center gap-3 mt-1">
+        <h1 class="text-2xl font-bold">{{ order.ozon_posting_number }}</h1>
+        <span class="px-2 py-0.5 rounded text-xs {% if order.order_type == 'FBS' %}bg-purple-100 text-purple-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+            {{ order.order_type }}
+        </span>
+        <span class="px-2 py-0.5 rounded text-xs
+            {% if order.status == 'delivered' %}bg-green-100 text-green-800
+            {% elif order.status == 'cancelled' %}bg-red-100 text-red-800
+            {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+            {% if order.status == 'delivered' %}已签收
+            {% elif order.status == 'cancelled' %}已取消
+            {% elif order.status == 'awaiting_packaging' %}待打包
+            {% elif order.status == 'awaiting_deliver' %}待发货
+            {% elif order.status == 'delivering' %}运输中
+            {% else %}{{ order.status }}{% endif %}
+        </span>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- 主体 -->
+    <div class="md:col-span-2 space-y-6">
+        <!-- 订单商品 -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">订单商品</h2>
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-left">
+                        <th class="px-3 py-2">商品</th>
+                        <th class="px-3 py-2">SKU</th>
+                        <th class="px-3 py-2 text-right">数量</th>
+                        <th class="px-3 py-2 text-right">单价</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.items %}
+                    <tr class="border-t">
+                        <td class="px-3 py-2">{{ item.name }}</td>
+                        <td class="px-3 py-2 font-mono text-xs">{{ item.offer_id or item.sku or '—' }}</td>
+                        <td class="px-3 py-2 text-right">{{ item.quantity }}</td>
+                        <td class="px-3 py-2 text-right font-mono">{{ "%.2f"|format(item.price) }} ₽</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 状态变更记录 -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">状态变更记录</h2>
+            <div class="space-y-3">
+                {% for h in status_history %}
+                <div class="flex items-center gap-3 text-sm">
+                    <span class="text-xs text-gray-400 w-36">{{ h.changed_at.strftime('%Y-%m-%d %H:%M') if h.changed_at else '' }}</span>
+                    <span class="px-2 py-0.5 rounded text-xs bg-gray-100">{{ h.from_status or '创建' }}</span>
+                    <span class="text-gray-400">→</span>
+                    <span class="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800">{{ h.to_status }}</span>
+                    <span class="text-xs text-gray-400">({{ h.changed_by }})</span>
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-400">暂无状态变更记录</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- FBS 操作 -->
+        {% if order.order_type == 'FBS' and order.status not in ('delivered', 'cancelled') %}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">FBS 发货操作</h2>
+            <div class="flex flex-wrap gap-2">
+                {% if order.status == 'awaiting_packaging' %}
+                <button hx-post="/orders/{{ order.id }}/ship" hx-target="body"
+                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">🚀 确认发货</button>
+                {% endif %}
+                {% if order.status == 'awaiting_deliver' %}
+                <button hx-post="/orders/{{ order.id }}/delivering" hx-target="body"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">🚚 标记运输中</button>
+                {% endif %}
+                {% if order.status == 'delivering' %}
+                <button hx-post="/orders/{{ order.id }}/delivered" hx-target="body"
+                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">✅ 标记已签收</button>
+                {% endif %}
+            </div>
+
+            {% if not order.tracking_number %}
+            <form hx-post="/orders/{{ order.id }}/tracking" hx-target="body" class="mt-4 flex gap-2">
+                <input type="text" name="tracking_number" required placeholder="快递单号"
+                       class="border rounded px-3 py-2 text-sm flex-1">
+                <input type="text" name="carrier" placeholder="快递公司（选填）"
+                       class="border rounded px-3 py-2 text-sm w-40">
+                <button type="submit" class="bg-slate-600 text-white px-4 py-2 rounded text-sm">设置运单号</button>
+            </form>
+            {% else %}
+            <div class="mt-4 text-sm">
+                <span class="text-gray-500">运单号：</span>
+                <span class="font-mono">{{ order.tracking_number }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 侧边栏 -->
+    <div class="space-y-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">订单信息</h2>
+            <dl class="space-y-3 text-sm">
+                <div><dt class="text-gray-500">订单编号</dt><dd class="font-mono">{{ order.order_number or '—' }}</dd></div>
+                <div><dt class="text-gray-500">Ozon创建时间</dt><dd>{{ order.created_at_ozon.strftime('%Y-%m-%d %H:%M') if order.created_at_ozon else '—' }}</dd></div>
+                <div><dt class="text-gray-500">处理时间</dt><dd>{{ order.in_process_at.strftime('%Y-%m-%d %H:%M') if order.in_process_at else '—' }}</dd></div>
+                <div><dt class="text-gray-500">发货日期</dt><dd>{{ order.shipment_date or '—' }}</dd></div>
+                <div><dt class="text-gray-500">配送方式</dt><dd>{{ order.delivery_method or '—' }}</dd></div>
+                <div><dt class="text-gray-500">仓库ID</dt><dd>{{ order.warehouse_id or '—' }}</dd></div>
+            </dl>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">财务概览</h2>
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <dt class="text-gray-500">订单金额</dt>
+                    <dd class="font-mono">{{ "%.2f"|format(order.total_price or 0) }} ₽</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-gray-500">佣金</dt>
+                    <dd class="font-mono text-red-600">-{{ "%.2f"|format(order.commission_amount or 0) }} ₽</dd>
+                </div>
+                <div class="flex justify-between border-t pt-2">
+                    <dt class="font-medium">净利润</dt>
+                    <dd class="font-mono font-bold {{ 'text-green-600' if order.net_profit and order.net_profit > 0 else 'text-red-600' }}">
+                        {{ "%.2f"|format(order.net_profit or 0) }} ₽
+                    </dd>
+                </div>
+            </dl>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6 text-xs text-gray-400">
+            <div>最后同步：{{ order.last_synced_at }}</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

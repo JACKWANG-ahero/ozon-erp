@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}价格管理 — Ozon ERP{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-6">💰 价格管理</h1>
+
+{% if history %}
+<div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-lg font-semibold mb-4">价格变更历史</h2>
+    <table class="min-w-full text-sm">
+        <thead>
+            <tr class="bg-gray-50 text-left">
+                <th class="px-4 py-2">时间</th>
+                <th class="px-4 py-2 text-right">售价</th>
+                <th class="px-4 py-2 text-right">原价</th>
+                <th class="px-4 py-2">变更来源</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for h in history %}
+            <tr class="border-t">
+                <td class="px-4 py-2">{{ h.changed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td class="px-4 py-2 text-right font-mono">{{ "%.2f"|format(h.price) }} ₽</td>
+                <td class="px-4 py-2 text-right font-mono text-gray-400">{{ "%.2f"|format(h.old_price) if h.old_price else '—' }} ₽</td>
+                <td class="px-4 py-2">{{ h.changed_by }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% elif pnl %}
+<div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-lg font-semibold mb-4">订单利润明细：{{ pnl.posting_number }}</h2>
+    <dl class="grid grid-cols-2 gap-4 text-sm">
+        <div><dt class="text-gray-500">订单金额</dt><dd class="font-mono text-lg">{{ "%.2f"|format(pnl.total_price) }} ₽</dd></div>
+        <div><dt class="text-gray-500">销售收入</dt><dd class="font-mono text-lg text-green-600">{{ "%.2f"|format(pnl.accruals_for_sale) }} ₽</dd></div>
+        <div><dt class="text-gray-500">佣金</dt><dd class="font-mono text-lg text-red-600">-{{ "%.2f"|format(pnl.commission) }} ₽</dd></div>
+        <div><dt class="text-gray-500">运费</dt><dd class="font-mono text-lg text-red-600">-{{ "%.2f"|format(pnl.delivery_charge) }} ₽</dd></div>
+        <div><dt class="text-gray-500">退货佣金</dt><dd class="font-mono text-lg text-red-600">-{{ "%.2f"|format(pnl.return_commission) }} ₽</dd></div>
+        <div class="col-span-2 border-t pt-2"><dt class="text-gray-700 font-medium">净利润</dt>
+            <dd class="font-mono text-xl font-bold {{ 'text-green-600' if pnl.net_profit and pnl.net_profit > 0 else 'text-red-600' }}">
+                {{ "%.2f"|format(pnl.net_profit or 0) }} ₽
+            </dd></div>
+    </dl>
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-8 text-center text-gray-400">
+    <p class="text-lg">价格管理模块</p>
+    <p class="text-sm mt-2">商品价格在同步时自动从Ozon拉取。手动调价功能即将上线。</p>
+</div>
+{% endif %}
+
+{% endblock %}

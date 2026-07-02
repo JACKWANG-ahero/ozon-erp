@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}订单管理 — Ozon ERP{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">📋 订单管理</h1>
+</div>
+
+<!-- 筛选 -->
+<form method="get" class="flex gap-3 mb-4 flex-wrap">
+    <select name="order_type" class="border rounded px-3 py-2 text-sm">
+        <option value="">全部类型</option>
+        <option value="FBS" {% if filter_type == 'FBS' %}selected{% endif %}>FBS (自发货)</option>
+        <option value="FBO" {% if filter_type == 'FBO' %}selected{% endif %}>FBO (平台发货)</option>
+    </select>
+    <select name="status" class="border rounded px-3 py-2 text-sm">
+        <option value="">全部状态</option>
+        <option value="awaiting_packaging" {% if filter_status == 'awaiting_packaging' %}selected{% endif %}>待打包</option>
+        <option value="awaiting_deliver" {% if filter_status == 'awaiting_deliver' %}selected{% endif %}>待发货</option>
+        <option value="delivering" {% if filter_status == 'delivering' %}selected{% endif %}>运输中</option>
+        <option value="delivered" {% if filter_status == 'delivered' %}selected{% endif %}>已签收</option>
+        <option value="cancelled" {% if filter_status == 'cancelled' %}selected{% endif %}>已取消</option>
+    </select>
+    <button type="submit" class="bg-slate-600 text-white px-4 py-2 rounded text-sm">筛选</button>
+</form>
+
+<!-- 订单表格 -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full text-sm">
+        <thead>
+            <tr class="bg-gray-100 text-left">
+                <th class="px-4 py-3">货件编号</th>
+                <th class="px-4 py-3">订单号</th>
+                <th class="px-4 py-3">类型</th>
+                <th class="px-4 py-3">状态</th>
+                <th class="px-4 py-3">商品</th>
+                <th class="px-4 py-3">金额</th>
+                <th class="px-4 py-3">利润</th>
+                <th class="px-4 py-3">创建时间</th>
+                <th class="px-4 py-3">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr class="border-t hover:bg-gray-50">
+                <td class="px-4 py-3 font-mono text-xs">{{ order.ozon_posting_number }}</td>
+                <td class="px-4 py-3 font-mono text-xs">{{ order.order_number or '—' }}</td>
+                <td class="px-4 py-3">
+                    <span class="px-2 py-0.5 rounded text-xs {% if order.order_type == 'FBS' %}bg-purple-100 text-purple-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                        {{ order.order_type }}
+                    </span>
+                </td>
+                <td class="px-4 py-3">
+                    {% if order.status == 'delivered' %}
+                    <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">✅ 已签收</span>
+                    {% elif order.status == 'cancelled' %}
+                    <span class="bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs">❌ 已取消</span>
+                    {% elif order.status == 'awaiting_packaging' %}
+                    <span class="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs">📦 待打包</span>
+                    {% elif order.status == 'awaiting_deliver' %}
+                    <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">📮 待发货</span>
+                    {% elif order.status == 'delivering' %}
+                    <span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-xs">🚚 运输中</span>
+                    {% else %}
+                    <span class="bg-gray-100 px-2 py-0.5 rounded text-xs">{{ order.status }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-xs">{{ order.items|length }} 件</td>
+                <td class="px-4 py-3 text-xs font-mono">{{ "%.0f"|format(order.total_price or 0) }} ₽</td>
+                <td class="px-4 py-3 text-xs font-mono {{ 'text-green-600' if order.net_profit and order.net_profit > 0 else 'text-red-600' }}">
+                    {{ "%.0f"|format(order.net_profit or 0) }} ₽
+                </td>
+                <td class="px-4 py-3 text-xs text-gray-500">
+                    {{ order.created_at_ozon.strftime('%Y-%m-%d') if order.created_at_ozon else '—' }}
+                </td>
+                <td class="px-4 py-3">
+                    <a href="/orders/{{ order.id }}" class="text-blue-600 hover:underline text-xs">详情</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="9" class="px-4 py-8 text-center text-gray-400">
+                    暂无订单数据。同步Ozon后将显示订单。
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if total > limit %}
+<div class="flex justify-between items-center mt-4 text-sm">
+    <span class="text-gray-500">共 {{ total }} 条订单</span>
+    <div class="flex gap-2">
+        {% if offset > 0 %}
+        <a href="?offset={{ [0, offset - limit]|max }}&limit={{ limit }}" class="bg-white border rounded px-3 py-1 hover:bg-gray-50">← 上一页</a>
+        {% endif %}
+        {% if offset + limit < total %}
+        <a href="?offset={{ offset + limit }}&limit={{ limit }}" class="bg-white border rounded px-3 py-1 hover:bg-gray-50">下一页 →</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

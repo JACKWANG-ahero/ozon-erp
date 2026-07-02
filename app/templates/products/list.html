@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}商品管理 — Ozon ERP{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">📦 商品管理</h1>
+    <div class="flex gap-2">
+        <a href="/products/new" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium">
+            ➕ 新建商品
+        </a>
+    </div>
+</div>
+
+<div id="import-result"></div>
+
+<!-- 批量操作栏 -->
+<div id="batch-bar" class="hidden bg-blue-50 border border-blue-200 rounded px-4 py-2 mb-3 flex items-center gap-3 text-sm">
+    <span>已选 <b id="batch-count">0</b> 个商品</span>
+    <button onclick="batchAction('import')" class="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">🚀 批量推送</button>
+    <button onclick="batchAction('archive')" class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600">📦 批量归档</button>
+    <button onclick="batchAction('delete')" class="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600">🗑️ 批量删除</button>
+    <button onclick="clearSelection()" class="text-gray-500 hover:text-gray-700 text-xs">取消选择</button>
+</div>
+
+<!-- 筛选 -->
+<div class="flex gap-3 mb-4 flex-wrap items-center">
+    <input type="text" name="search" value="{{ search or '' }}" placeholder="搜索商品名称 / SKU / 品牌..."
+           class="border rounded px-3 py-2 text-sm w-64"
+           onchange="window.location.search = new URLSearchParams({search: this.value, status: '{{ status or 'draft' }}'}).toString()">
+    <div class="flex bg-gray-100 rounded-lg p-0.5">
+        <a href="?status=draft&search={{ search or '' }}"
+           class="px-3 py-1.5 rounded text-sm font-medium {{ 'bg-white shadow text-blue-600' if status == 'draft' or not status else 'text-gray-600 hover:text-gray-800' }}">📝 草稿</a>
+        <a href="?status=imported&search={{ search or '' }}"
+           class="px-3 py-1.5 rounded text-sm font-medium {{ 'bg-white shadow text-green-600' if status == 'imported' else 'text-gray-600 hover:text-gray-800' }}">✅ 已上架</a>
+        <a href="?status=import_error&search={{ search or '' }}"
+           class="px-3 py-1.5 rounded text-sm font-medium {{ 'bg-white shadow text-red-600' if status == 'import_error' else 'text-gray-600 hover:text-gray-800' }}">❌ 失败</a>
+        <a href="?status=archived&search={{ search or '' }}"
+           class="px-3 py-1.5 rounded text-sm font-medium {{ 'bg-white shadow text-yellow-600' if status == 'archived' else 'text-gray-600 hover:text-gray-800' }}">📦 归档</a>
+        <a href="?status=deleted&search={{ search or '' }}"
+           class="px-3 py-1.5 rounded text-sm font-medium {{ 'bg-white shadow text-red-600' if status == 'deleted' else 'text-gray-600 hover:text-gray-800' }}">🗑️ 已删除</a>
+    </div>
+    {% if search %}
+    <a href="?status={{ status or 'draft' }}" class="text-sm text-blue-600">清除搜索</a>
+    {% endif %}
+</div>
+
+<!-- 商品列表 -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full text-sm">
+        <thead>
+            <tr class="bg-gray-100 text-left">
+                <th class="px-3 py-3 w-8"><input type="checkbox" onclick="toggleAll(this)" id="select-all"></th>
+                <th class="px-2 py-3">图片</th>
+                <th class="px-3 py-3">SKU</th>
+                <th class="px-3 py-3">商品名称</th>
+                <th class="px-3 py-3">类目</th>
+                <th class="px-2 py-3">品牌</th>
+                <th class="px-2 py-3">价格</th>
+                <th class="px-3 py-3">状态</th>
+                <th class="px-3 py-3">创建日期</th>
+                <th class="px-3 py-3">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in products %}
+            <tr class="border-t hover:bg-gray-50" id="row-{{ loop.index }}">
+                <td class="px-3 py-3">
+                    {% if p.status != 'deleted' %}
+                    <input type="checkbox" value="{{ p.id }}" class="product-checkbox" onclick="updateBatchBar()">
+                    {% endif %}
+                </td>
+                <td class="px-2 py-2">
+                    {% if p.primary_image_url %}
+                    <img src="{{ p.primary_image_url }}" class="w-8 h-8 object-cover rounded" alt="">
+                    {% else %}
+                    <div class="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">📷</div>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-2 font-mono text-xs">{{ p.offer_id }}</td>
+                <td class="px-3 py-2 max-w-xs truncate" title="{{ p.name_ru }}">{{ p.name_ru[:30] }}{% if p.name_ru|length > 30 %}...{% endif %}</td>
+                <td class="px-3 py-2 text-xs text-gray-500">{{ p.category_id or '—' }}</td>
+                <td class="px-2 py-2 text-xs">{{ p.brand or '—' }}</td>
+                <td class="px-2 py-2 text-xs">
+                    {% if p.price and p.price.price %}¥{{ p.price.price }}{% else %}—{% endif %}
+                </td>
+                <td class="px-3 py-2">
+                    {% if p.status == 'imported' %}
+                    <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">✅ 已上架</span>
+                    {% elif p.status == 'draft' %}
+                    <span class="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-xs">📝 草稿</span>
+                    {% elif p.status == 'import_error' %}
+                    <span class="bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs">❌ 失败</span>
+                    {% elif p.status == 'archived' %}
+                    <span class="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs">📦 已归档</span>
+                    {% elif p.status == 'deleted' %}
+                    <span class="bg-red-200 text-red-900 px-2 py-0.5 rounded text-xs">🗑️ 已删除</span>
+                    {% else %}
+                    <span class="bg-gray-100 px-2 py-0.5 rounded text-xs">{{ p.status }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-2 text-xs text-gray-400">{{ p.created_at.strftime('%Y-%m-%d') if p.created_at else '—' }}</td>
+                <td class="px-3 py-2">
+                    <div class="flex gap-1">
+                    <a href="/products/{{ p.id }}" class="text-blue-600 hover:underline text-xs">查看</a>
+                    {% if p.status == 'deleted' %}
+                    <button hx-post="/products/{{ p.id }}/restore" hx-target="body"
+                            class="text-green-600 hover:underline text-xs">恢复</button>
+                    {% else %}
+                    {% if p.status in ('draft', 'local_only') or p.status == 'import_error' %}
+                    <a href="/products/{{ p.id }}/edit" class="text-purple-600 hover:underline text-xs">编辑</a>
+                    {% endif %}
+                    {% if p.status in ('draft', 'import_error') or p.sync_status == 'modified' %}
+                    <button hx-post="/products/{{ p.id }}/import" hx-target="body"
+                            class="text-green-600 hover:underline text-xs">推送</button>
+                    {% endif %}
+                    {% if p.status != 'archived' %}
+                    <button hx-post="/products/{{ p.id }}/archive" hx-target="body" hx-confirm="确定归档？"
+                            class="text-yellow-600 hover:underline text-xs">归档</button>
+                    {% endif %}
+                    <button hx-post="/products/{{ p.id }}/delete" hx-target="body" hx-confirm="确定删除？将移入已删除列表"
+                            class="text-red-500 hover:underline text-xs">删除</button>
+                    {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="10" class="px-4 py-8 text-center text-gray-400">
+                    暂无商品数据。
+                    <a href="/products/new" class="text-blue-600 hover:underline">创建第一个商品 →</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 分页 -->
+{% if total > limit %}
+<div class="flex justify-between items-center mt-4 text-sm">
+    <span class="text-gray-500">共 {{ total }} 个商品</span>
+    <div class="flex gap-2">
+        {% if offset > 0 %}
+        <a href="?offset={{ [0, offset - limit]|max }}&limit={{ limit }}&search={{ search or '' }}&status={{ status or '' }}"
+           class="bg-white border rounded px-3 py-1 hover:bg-gray-50">← 上一页</a>
+        {% endif %}
+        {% if offset + limit < total %}
+        <a href="?offset={{ offset + limit }}&limit={{ limit }}&search={{ search or '' }}&status={{ status or '' }}"
+           class="bg-white border rounded px-3 py-1 hover:bg-gray-50">下一页 →</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+function updateBatchBar() {
+    const checked = document.querySelectorAll('.product-checkbox:checked');
+    const count = checked.length;
+    document.getElementById('batch-count').textContent = count;
+    document.getElementById('batch-bar').classList.toggle('hidden', count === 0);
+    document.getElementById('select-all').checked =
+        document.querySelectorAll('.product-checkbox').length > 0 &&
+        document.querySelectorAll('.product-checkbox:checked').length === document.querySelectorAll('.product-checkbox').length;
+}
+
+function toggleAll(el) {
+    document.querySelectorAll('.product-checkbox').forEach(cb => cb.checked = el.checked);
+    updateBatchBar();
+}
+
+function clearSelection() {
+    document.querySelectorAll('.product-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('select-all').checked = false;
+    updateBatchBar();
+}
+
+function batchAction(action) {
+    const ids = Array.from(document.querySelectorAll('.product-checkbox:checked')).map(cb => cb.value);
+    if (ids.length === 0) return;
+
+    const labels = {import:'批量推送', archive:'批量归档', delete:'批量删除'};
+    if (!confirm(`确定${labels[action]} ${ids.length} 个商品？`)) return;
+
+    fetch('/products/batch/' + action, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({product_ids: ids})
+    }).then(r => r.json()).then(data => {
+        alert(`${labels[action]}完成：成功 ${data.success || 0}，失败 ${data.failed || 0}`);
+        window.location.reload();
+    }).catch(e => alert('操作失败：' + e));
+}
+</script>
+
+{% endblock %}

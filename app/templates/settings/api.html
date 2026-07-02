@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}系统设置 — Ozon ERP{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-6">⚙️ 系统设置</h1>
+
+<!-- 自动同步状态 -->
+<div class="bg-white rounded-lg shadow p-6 mb-6"
+     hx-get="/api/scheduler/status" hx-trigger="every 30s">
+    <h2 class="text-lg font-semibold mb-4">⏱️ 自动同步</h2>
+    <div class="flex items-center gap-4 text-sm">
+        <span class="px-3 py-1 rounded bg-green-100 text-green-800">
+            🔄 每 15 分钟自动同步一次
+        </span>
+        <span class="text-gray-500">
+            同步内容：FBS订单 → FBO订单 → 商品信息 → 价格 → 库存
+        </span>
+    </div>
+    <p class="text-xs text-gray-400 mt-2">
+        📍 时区：莫斯科 (UTC+3) &nbsp;|&nbsp;
+        可修改 <code>.env</code> 中 <code>SYNC_PRODUCTS_INTERVAL_MINUTES</code> 调整间隔
+    </p>
+</div>
+
+<!-- 手动同步 -->
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">🔄 手动同步</h2>
+    <p class="text-sm text-gray-500 mb-4">手动触发与Ozon的数据同步，操作记录将显示在下方日志中。</p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <button hx-post="/sync/categories" hx-target="#sync-result"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+            🗂 同步类目
+        </button>
+        <button hx-post="/sync/products" hx-target="#sync-result"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
+            📦 同步商品
+        </button>
+        <button hx-post="/sync/prices" hx-target="#sync-result"
+                class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm">
+            💰 同步价格
+        </button>
+        <button hx-post="/sync/stocks" hx-target="#sync-result"
+                class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm">
+            🏭 同步库存
+        </button>
+        <button hx-post="/sync/orders/fbs" hx-target="#sync-result"
+                class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded text-sm">
+            📋 同步FBS订单
+        </button>
+        <button hx-post="/sync/orders/fbo" hx-target="#sync-result"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">
+            📦 同步FBO订单
+        </button>
+        <button hx-post="/sync/finance" hx-target="#sync-result"
+                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
+            💳 同步财务
+        </button>
+        <button hx-post="/sync/all" hx-target="#sync-result"
+                class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded text-sm font-bold">
+            🔄 全部同步
+        </button>
+    </div>
+    <div id="sync-result" class="mt-4"></div>
+</div>
+
+<!-- 同步日志 -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="px-6 py-4 border-b"><h2 class="font-semibold">📋 同步日志</h2></div>
+    {% if sync_history %}
+    <table class="min-w-full text-sm">
+        <thead>
+            <tr class="bg-gray-50 text-left">
+                <th class="px-4 py-2">数据实体</th>
+                <th class="px-4 py-2">方向</th>
+                <th class="px-4 py-2">状态</th>
+                <th class="px-4 py-2 text-right">成功数</th>
+                <th class="px-4 py-2 text-right">失败数</th>
+                <th class="px-4 py-2">开始时间</th>
+                <th class="px-4 py-2">错误信息</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in sync_history %}
+            <tr class="border-t">
+                <td class="px-4 py-2">{{ log.entity_type }}</td>
+                <td class="px-4 py-2">
+                    <span class="px-2 py-0.5 rounded text-xs {{ 'bg-green-100 text-green-800' if log.direction == 'pull' else 'bg-blue-100 text-blue-800' }}">
+                        {% if log.direction == 'pull' %}拉取{% else %}推送{% endif %}
+                    </span>
+                </td>
+                <td class="px-4 py-2">
+                    {% if log.status == 'success' %}<span class="text-green-600">✅ 成功</span>
+                    {% elif log.status == 'failed' %}<span class="text-red-600">❌ 失败</span>
+                    {% elif log.status == 'partial' %}<span class="text-yellow-600">⚠️ 部分成功</span>
+                    {% else %}<span class="text-blue-600">🔄 进行中</span>{% endif %}
+                </td>
+                <td class="px-4 py-2 text-right">{{ log.records_processed }}</td>
+                <td class="px-4 py-2 text-right">{{ log.records_failed }}</td>
+                <td class="px-4 py-2 text-xs">{{ log.started_at.strftime('%H:%M:%S') if log.started_at else '' }}</td>
+                <td class="px-4 py-2 text-xs text-red-500 max-w-[200px] truncate">{{ log.error_message or '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="px-6 py-8 text-center text-gray-400">暂无同步记录，点击上方按钮开始同步。</div>
+    {% endif %}
+</div>
+
+<!-- API 配置 -->
+<div class="bg-white rounded-lg shadow p-6 mt-6">
+    <h2 class="text-lg font-semibold mb-4">🔑 Ozon API 配置</h2>
+    <p class="text-sm text-gray-500 mb-4">
+        在项目根目录的 <code>.env</code> 文件中配置你的 Ozon Seller API 凭证：
+    </p>
+    <pre class="bg-gray-100 rounded p-4 text-sm font-mono overflow-x-auto">
+OZON_CLIENT_ID=你的Client-ID
+OZON_API_KEY=你的API密钥
+OZON_BASE_URL=https://api-seller.ozon.ru</pre>
+    <p class="text-sm text-gray-400 mt-3">
+        可在 Ozon 卖家后台 → 设置 → 卖家API 中生成密钥。
+    </p>
+</div>
+
+{% endblock %}

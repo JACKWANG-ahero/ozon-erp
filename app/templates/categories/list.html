@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}类目管理 — Ozon ERP{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">🗂️ 类目管理</h1>
+    <div class="flex gap-2">
+        <a href="/categories/classify" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium">
+            🔍 类目查询
+        </a>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full text-sm">
+        <thead>
+            <tr class="bg-gray-100 text-left">
+                <th class="px-4 py-3">类目ID</th>
+                <th class="px-4 py-3">名称</th>
+                <th class="px-4 py-3">级别</th>
+                <th class="px-4 py-3">类型ID</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in categories %}
+            <tr class="border-t hover:bg-gray-50">
+                <td class="px-4 py-2 font-mono text-xs">{{ c.id }}</td>
+                <td class="px-4 py-2">
+                    <span style="padding-left: {{ c.level * 16 }}px">{{ c.title_ru }}</span>
+                </td>
+                <td class="px-4 py-2 text-xs text-gray-500">{{ c.level }}</td>
+                <td class="px-4 py-2 text-xs">{{ c.type_id or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="px-4 py-8 text-center text-gray-400">
+                    暂无类目数据。请先同步类目。
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<p class="text-xs text-gray-400 mt-2">共 {{ categories|length }} 个类目</p>
+
+{% endblock %}

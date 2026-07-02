@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+{% block title %}
+    {% if classify_mode %}类目查询{% elif lookup_mode %}类目ID 获取指南{% else %}新建商品{% endif %} — Ozon ERP
+{% endblock %}
+{% block content %}
+
+{% if classify_mode and lookup_mode %}
+<!-- ========== 手动获取类目ID 指南 ========== -->
+<h1 class="text-2xl font-bold mb-6">📖 如何获取 Ozon 类目ID</h1>
+<div class="max-w-2xl bg-white rounded-lg shadow p-6">
+    <div class="space-y-6 text-sm">
+        <div class="border-l-4 border-blue-500 pl-4">
+            <h3 class="font-medium mb-1">方法一：Ozon 卖家后台</h3>
+            <ol class="list-decimal ml-4 space-y-1 text-gray-600">
+                <li>打开 <a href="https://seller.ozon.ru" target="_blank" class="text-blue-600">seller.ozon.ru</a></li>
+                <li>进入 <b>Товары и цены</b> → 添加商品 → 选择类目</li>
+                <li>地址栏/接口中的 <code class="bg-gray-100 px-1">category_id</code> 即为类目ID</li>
+            </ol>
+        </div>
+        <div class="border-l-4 border-green-500 pl-4">
+            <h3 class="font-medium mb-1">方法二：ERP 类目树</h3>
+            <p class="text-gray-600">新建商品页面已内置类目树选择器，展开即可浏览。</p>
+        </div>
+        <div class="border-l-4 border-purple-500 pl-4">
+            <h3 class="font-medium mb-1">方法三：自动分类</h3>
+            <p class="text-gray-600"><a href="/categories/classify" class="text-blue-600">输入俄语商品名 → Ozon 自动推荐类目</a></p>
+        </div>
+    </div>
+    <a href="/categories/classify" class="text-blue-600 text-sm mt-4 inline-block">← 返回类目查询</a>
+</div>
+
+{% elif classify_mode and classify_results %}
+<!-- ========== 分类结果 ========== -->
+<h1 class="text-2xl font-bold mb-6">🔍 类目查询结果</h1>
+<div class="max-w-2xl bg-white rounded-lg shadow p-6">
+    <h2 class="text-lg font-semibold mb-4">"{{ classify_name }}" 匹配结果</h2>
+    <table class="min-w-full text-sm border">
+        <thead><tr class="bg-gray-50"><th class="px-3 py-2">类目ID</th><th class="px-3 py-2">类目名称</th><th class="px-3 py-2 text-right">置信度</th></tr></thead>
+        <tbody>
+            {% for r in classify_results %}
+            <tr class="border-t">
+                <td class="px-3 py-2 font-mono font-bold text-blue-600">{{ r.category_id }}</td>
+                <td class="px-3 py-2">{{ r.category_name }}</td>
+                <td class="px-3 py-2 text-right">{{ "%.1f"|format(r.confidence * 100) }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="/categories/classify" class="text-blue-600 text-sm mt-4 inline-block">← 重新查询</a>
+</div>
+
+{% elif classify_mode %}
+<!-- ========== 类目识别表单 ========== -->
+<h1 class="text-2xl font-bold mb-6">🔍 类目自动识别</h1>
+<div class="max-w-2xl bg-white rounded-lg shadow p-6">
+    <form method="post" action="/categories/classify" class="space-y-4">
+        <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
+            💡 输入商品俄语名称，Ozon API 自动推荐类目ID。
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">商品名称（俄语）*</label>
+            <input type="text" name="name" required class="w-full border rounded px-3 py-2 text-sm"
+                   placeholder="例如：Платье женское / Набор для вышивания">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">描述（可选）</label>
+            <input type="text" name="description" class="w-full border rounded px-3 py-2 text-sm"
+                   placeholder="Краткое описание...">
+        </div>
+        <div class="flex gap-4">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium">🔍 查询</button>
+            <a href="/categories/lookup" class="text-blue-600 text-sm py-2 hover:underline">📖 手动获取指南 →</a>
+        </div>
+    </form>
+</div>
+
+{% else %}
+<!-- ========== 新建商品表单 ========== -->
+<h1 class="text-2xl font-bold mb-6">➕ 新建商品</h1>
+
+<div class="max-w-4xl mx-auto">
+    <form method="post" action="/products/new" enctype="multipart/form-data" class="space-y-6">
+        <!-- 必填提示 -->
+        <div class="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800 flex items-center justify-between">
+            <span>⚠️ <strong>Ozon要求：</strong>商品图片 + 类目ID 为必填项</span>
+            <a href="/categories/classify" class="text-blue-600 hover:underline text-xs">🔍 查类目ID</a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 左列：基本信息 -->
+            <div class="bg-white rounded-lg shadow p-6 space-y-4">
+                <h2 class="font-semibold text-gray-700 border-b pb-2">📋 基本信息</h2>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Offer ID (SKU) *</label>
+                    <input type="text" name="offer_id" required class="w-full border rounded px-3 py-2 text-sm" placeholder="SKU-001" value="{{ product.offer_id if product else '' }}" {% if product %}readonly{% endif %}>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Название товара（俄语）*</label>
+                    <input type="text" name="name_ru" required class="w-full border rounded px-3 py-2 text-sm" placeholder="Название товара" value="{{ product.name_ru if product else '' }}">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">商品名称（中文）</label>
+                    <input type="text" name="name_zh" class="w-full border rounded px-3 py-2 text-sm" placeholder="商品中文名称" value="{{ product.name_zh if product else '' }}" id="name-zh-input">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">品牌</label>
+                        <input type="text" name="brand" class="w-full border rounded px-3 py-2 text-sm" placeholder="品牌" value="{{ product.brand or '' if product else '' }}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">条形码</label>
+                        <input type="text" name="barcode" class="w-full border rounded px-3 py-2 text-sm" placeholder="4601234567890" value="{{ product.barcode or '' if product else '' }}">
+                    </div>
+                </div>
+                <!-- 价格 -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">售价 (¥CNY) *</label>
+                        <input type="text" name="price" required class="w-full border rounded px-3 py-2 text-sm" placeholder="80" value="{{ product.price.price if product and product.price else '' }}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">原价 (¥CNY)</label>
+                        <input type="text" name="old_price" class="w-full border rounded px-3 py-2 text-sm" placeholder="92" value="{{ product.price.old_price if product and product.price else '' }}">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">增值税率 *</label>
+                        <select name="vat" required class="w-full border rounded px-3 py-2 text-sm">
+                            {% set vat_val = product.price.vat if product and product.price else '0' %}
+                            <option value="0" {% if vat_val=='0' %}selected{% endif %}>0% — 免税</option>
+                            <option value="0.05" {% if vat_val=='0.05' %}selected{% endif %}>5%</option>
+                            <option value="0.07" {% if vat_val=='0.07' %}selected{% endif %}>7%</option>
+                            <option value="0.1" {% if vat_val=='0.1' %}selected{% endif %}>10%</option>
+                            <option value="0.2" {% if vat_val=='0.2' %}selected{% endif %}>20%</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">货币</label>
+                        <select name="currency_code" class="w-full border rounded px-3 py-2 text-sm">
+                            {% set cur = product.price.currency if product and product.price else 'CNY' %}
+                            <option value="CNY" {% if cur=='CNY' %}selected{% endif %}>¥ CNY 人民币</option>
+                            <option value="RUB" {% if cur=='RUB' %}selected{% endif %}>₽ RUB 卢布</option>
+                            <option value="USD" {% if cur=='USD' %}selected{% endif %}>USD 美元</option>
+                            <option value="EUR" {% if cur=='EUR' %}selected{% endif %}>EUR 欧元</option>
+                            <option value="BYN" {% if cur=='BYN' %}selected{% endif %}>BYN 白俄卢布</option>
+                            <option value="KZT" {% if cur=='KZT' %}selected{% endif %}>KZT 坚戈</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">商品描述（俄语）</label>
+                    <textarea name="description_ru" rows="3" class="w-full border rounded px-3 py-2 text-sm" placeholder="Описание товара...">{{ product.description_ru or '' if product else '' }}</textarea>
+                </div>
+
+                <!-- 尺寸 -->
+                <div class="grid grid-cols-4 gap-2">
+                    <div><label class="text-xs text-gray-500">高(mm)</label><input type="number" name="height" step="0.1" class="w-full border rounded px-2 py-1 text-sm" placeholder="100" value="{{ product.height if product else '' }}"></div>
+                    <div><label class="text-xs text-gray-500">长(mm)</label><input type="number" name="depth" step="0.1" class="w-full border rounded px-2 py-1 text-sm" placeholder="100" value="{{ product.depth if product else '' }}"></div>
+                    <div><label class="text-xs text-gray-500">宽(mm)</label><input type="number" name="width" step="0.1" class="w-full border rounded px-2 py-1 text-sm" placeholder="100" value="{{ product.width if product else '' }}"></div>
+                    <div><label class="text-xs text-gray-500">重量(g)</label><input type="number" name="weight" step="0.1" class="w-full border rounded px-2 py-1 text-sm" placeholder="500" value="{{ product.weight if product else '' }}"></div>
+                </div>
+
+                <!-- 定价计算器 -->
+                <div class="bg-white rounded-lg shadow p-6" x-data="priceCalc()">
+                    <h2 class="font-semibold text-gray-700 border-b pb-2 mb-3">🧮 定价计算器 <span class="text-xs text-gray-400">RETS 俄通收 · 实时报价</span></h2>
+                    <div class="grid grid-cols-3 gap-2 mb-2">
+                        <div>
+                            <label class="text-xs text-gray-500">采购成本 (¥CNY) *</label>
+                            <input type="number" step="0.01" x-model="purchase" class="w-full border rounded px-2 py-1 text-sm" placeholder="50">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">重量 (kg) *</label>
+                            <input type="number" step="0.001" x-model="weight" class="w-full border rounded px-2 py-1 text-sm" placeholder="0.5">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">目的地</label>
+                            <select x-model="dest" class="w-full border rounded px-2 py-1 text-sm">
+                                <option value="RU">🇷🇺 俄罗斯</option>
+                                <option value="BY">🇧🇾 白俄罗斯</option>
+                                <option value="KZ">🇰🇿 哈萨克斯坦</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">佣金率 %</label>
+                            <input type="number" step="1" x-model="commission" class="w-full border rounded px-2 py-1 text-sm" placeholder="15">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">利润率 %</label>
+                            <input type="number" step="1" x-model="profit" class="w-full border rounded px-2 py-1 text-sm" placeholder="20">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">货损率 %</label>
+                            <input type="number" step="0.5" x-model="loss" class="w-full border rounded px-2 py-1 text-sm" placeholder="2">
+                        </div>
+                    </div>
+                    <button type="button" @click="calculate()" :disabled="loading"
+                            class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded text-sm font-medium">
+                        <span x-show="!loading">💰 计算售价（遍历全部渠道）</span>
+                        <span x-show="loading">⏳ 计算中...</span>
+                    </button>
+
+                    <div x-show="error" class="mt-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600"
+                         x-text="error" style="display:none"></div>
+
+                    <!-- 最佳渠道结果 -->
+                    <div x-show="result" class="mt-3 p-3 bg-green-50 border border-green-200 rounded text-sm" style="display:none">
+                        <div class="flex justify-between mb-1">
+                            <span>🎯 <b>最低售价:</b></span>
+                            <span class="font-bold text-lg text-green-700" x-text="'¥' + result.selling_price_cny + ' (≈' + result.selling_price_rub + '₽)'"></span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span>🏆 最佳渠道:</span>
+                            <span class="font-medium" x-text="result.best_channel"></span>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            💸 佣金 ¥<span x-text="result.commission_cny"></span> ·
+                            📈 利润 ¥<span x-text="result.profit_cny"></span> ·
+                            📦 货损 ¥<span x-text="result.loss_reserve_cny"></span> ·
+                            🔄 <span x-text="(result.converged ? '✅' : '⚠️') + ' ' + result.iterations + '次'"></span>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">👆 点击下方渠道行选择具体渠道</p>
+                    </div>
+
+                    <!-- 渠道对比表 -->
+                    <div x-show="result && result.channels" class="mt-3" style="display:none">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-1">📋 全部可用渠道 (<span x-text="result.channels.length"></span>个)</h3>
+                        <div class="border rounded max-h-64 overflow-y-auto text-xs">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-2 py-1 text-left">渠道/时效</th>
+                                        <th class="px-1 py-1">运费</th>
+                                        <th class="px-1 py-1">佣金</th>
+                                        <th class="px-1 py-1">利润</th>
+                                        <th class="px-1 py-1">货损</th>
+                                        <th class="px-1 py-1">售价</th>
+                                        <th class="px-1 py-1">⚡</th>
+                                    </tr>
+                                </thead>
+                                <template x-for="(ch, i) in result.channels" :key="ch.id">
+                                    <tbody>
+                                        <tr :class="selectedIdx === i ? 'bg-blue-50' : (i === 0 ? 'bg-green-50 font-medium' : 'hover:bg-gray-50')"
+                                            class="border-t cursor-pointer" @click="selectChannel(ch, i)">
+                                            <td class="px-2 py-1 text-xs">
+                                                <div x-text="ch.name" class="font-medium"></div>
+                                                <div class="text-gray-400" x-text="ch.transit_time + ' · ' + ch.speed"></div>
+                                            </td>
+                                            <td class="px-1 py-1 text-right text-xs" x-text="'¥' + ch.shipping_fee_cny"></td>
+                                            <td class="px-1 py-1 text-right text-xs" x-text="'¥' + ch.commission_cny"></td>
+                                            <td class="px-1 py-1 text-right text-xs" x-text="'¥' + ch.profit_cny"></td>
+                                            <td class="px-1 py-1 text-right text-xs" x-text="'¥' + ch.loss_cny"></td>
+                                            <td class="px-1 py-1 text-right text-xs font-bold text-blue-700" x-text="'¥' + ch.selling_price_cny"></td>
+                                            <td class="px-1 py-1 text-center text-xs" x-text="ch.battery_allowed ? '✅' : '❌'"></td>
+                                        </tr>
+                                        <tr x-show="selectedIdx === i" class="bg-blue-50">
+                                            <td colspan="7" class="px-3 py-2 text-xs">
+                                                采购 <b>¥<span x-text="purchase"></span></b> ·
+                                                运费 <b>¥<span x-text="ch.shipping_fee_cny"></span></b> ·
+                                                佣金 <b>¥<span x-text="ch.commission_cny"></span></b> ·
+                                                利润 <b>¥<span x-text="ch.profit_cny"></span></b> ·
+                                                货损 <b>¥<span x-text="ch.loss_cny"></span></b> ·
+                                                计费 <b>¥<span x-text="ch.rate_per_kg"></span>/kg + ¥<span x-text="ch.per_ticket_fee"></span></b> ·
+                                                赔付 <b x-text="ch.max_compensation_rub"></b> RUB
+                                                <span x-show="!ch.battery_allowed" class="text-red-500 ml-2">⚠️ 禁带电</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </template>
+                            </table>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">💡 点击行选择渠道并填入售价 | ⚡特快=4-9天 标准=10-15天 经济=15-30天 | ❌禁带电 | ✅可带电</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右列：类目树 + 图片 -->
+            <div class="space-y-6">
+                <!-- 类目联想搜索 -->
+                <div class="bg-white rounded-lg shadow p-6" x-data="categorySearch({{ product.category_id if product and product.category_id else 'null' }}, '{{ product.category.title_ru if product and product.category else '' }}')">
+                    <h2 class="font-semibold text-gray-700 border-b pb-2 mb-3">🗂️ 选择类目 *</h2>
+
+                    <!-- 已选类目 -->
+                    <div class="mb-3">
+                        <input type="hidden" name="category_id" :value="selectedId" required>
+                        <div x-show="selectedId" class="bg-blue-50 border border-blue-200 rounded p-2 text-sm flex items-center justify-between">
+                            <span>
+                                🏷️ <span class="font-mono font-bold text-blue-700" x-text="selectedId"></span>
+                                — <span x-text="selectedTitle" class="text-blue-600"></span>
+                            </span>
+                            <button type="button" @click="clear()" class="text-red-400 hover:text-red-600 text-xs">✕ 清除</button>
+                        </div>
+                        <div x-show="!selectedId" class="text-sm text-gray-400">输入产品名称自动匹配类目</div>
+                    </div>
+
+                    <!-- 联想搜索 -->
+                    <input type="text" x-model="query" @input="search()" placeholder="输入产品名称（中文/俄语），如：连衣裙, Samsung..."
+                           class="w-full border rounded px-3 py-2 text-sm mb-2">
+
+                    <!-- 搜索结果 -->
+                    <div x-show="results.length > 0" class="border rounded divide-y text-sm max-h-64 overflow-y-auto">
+                        <template x-for="r in results" :key="r.category_id">
+                            <div @click="select(r)" class="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center justify-between">
+                                <span>
+                                    <span class="font-mono text-blue-600 text-xs" x-text="r.category_id"></span>
+                                    <span class="mx-1">—</span>
+                                    <span x-text="r.title"></span>
+                                </span>
+                                <span class="text-xs text-gray-400">点击选择</span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- 加载中 -->
+                    <div x-show="loading" class="p-3 text-center text-gray-400 text-sm">🔍 搜索中...</div>
+                </div>
+
+                <!-- 图片上传（本地文件） -->
+                <div class="bg-white rounded-lg shadow p-6" x-data="imageUploader()">
+                    <h2 class="font-semibold text-gray-700 border-b pb-2 mb-3">
+                        🖼️ 商品图片 *
+                        <span class="text-xs text-gray-400">（本地上传，第一张为主图，最多30张）</span>
+                    </h2>
+
+                    <!-- 统一上传口 -->
+                    <input type="file" name="image_files" accept="image/jpeg,image/png,image/webp" multiple
+                           class="w-full border rounded px-3 py-2 text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                           @change="handleFiles($event)">
+
+                    <!-- 预览网格 + 放大查看 -->
+                    <div class="mt-3 grid grid-cols-6 gap-2">
+                        <template x-for="(img, idx) in previews" :key="idx">
+                            <div class="relative group">
+                                <img :src="img" class="w-full aspect-square object-cover rounded border cursor-pointer hover:ring-2 hover:ring-blue-400"
+                                     @click="zoom(idx)">
+                                <!-- 主图标记 -->
+                                <span x-show="idx === 0" class="absolute top-0 left-0 bg-blue-600 text-white text-xs px-1 rounded-br">主图</span>
+                                <!-- 删除按钮 -->
+                                <button type="button" @click="remove(idx)"
+                                        class="absolute top-0 right-0 bg-red-500 text-white text-xs w-5 h-5 rounded-full hidden group-hover:flex items-center justify-center">✕</button>
+                            </div>
+                        </template>
+                        <!-- 空状态 -->
+                        <div x-show="previews.length === 0"
+                             class="col-span-6 py-4 text-center text-gray-400 text-sm border-2 border-dashed rounded">
+                            📷 点击上方选择图片，支持多选（最多30张）
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-gray-400 mt-2">
+                        📌 <span x-text="previews.length"></span>/30 张 | 支持 JPG/PNG/WebP | 第一张自动设为主图 | 点击图片可放大查看
+                    </p>
+
+                    <!-- 放大遮罩 -->
+                    <div x-show="zoomed !== null" @click="zoomed = null"
+                         class="fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center cursor-pointer"
+                         x-cloak>
+                        <button @click.stop="zoomed = null" class="absolute top-4 right-4 text-white text-3xl">&times;</button>
+                        <img :src="zoomed !== null ? previews[zoomed] : ''" class="max-w-[90vw] max-h-[90vh] object-contain">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提交 -->
+        <div class="flex gap-4">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded font-medium text-lg">创建商品</button>
+            <a href="/products/" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-8 py-3 rounded font-medium text-lg">取消</a>
+        </div>
+    </form>
+</div>
+
+<!-- Alpine.js: 图片预览 -->
+<script>
+function imageUploader() {
+    return {
+        previews: [],
+        zoomed: null,
+        MAX: 30,
+        handleFiles(event) {
+            const files = Array.from(event.target.files);
+            if (this.previews.length + files.length > this.MAX) {
+                alert(`最多上传 ${this.MAX} 张图片`);
+                return;
+            }
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => { this.previews.push(e.target.result); };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        },
+        remove(idx) {
+            this.previews.splice(idx, 1);
+            if (this.zoomed === idx) this.zoomed = null;
+        },
+        zoom(idx) {
+            this.zoomed = this.zoomed === idx ? null : idx;
+        }
+    }
+}
+</script>
+
+<!-- Alpine.js 定价计算器 -->
+<script>
+function priceCalc() {
+    return {
+        purchase: '',
+        weight: '',
+        dest: 'RU',
+        commission: 15,
+        profit: 20,
+        loss: 2,
+        result: null,
+        error: null,
+        loading: false,
+
+        async calculate() {
+            if (!this.purchase || !this.weight) {
+                this.error = '请输入采购成本和重量';
+                return;
+            }
+            this.loading = true;
+            this.error = null;
+            this.result = null;
+            try {
+                const params = new URLSearchParams({
+                    purchase_cost: this.purchase,
+                    weight_kg: this.weight,
+                    destination: this.dest,
+                    commission_rate: this.commission / 100,
+                    profit_rate: this.profit / 100,
+                    loss_rate: this.loss / 100,
+                });
+                const resp = await fetch('/products/api/calculate-price?' + params);
+                const data = await resp.json();
+                if (data.error) { this.error = data.error; }
+                else { this.result = data; }
+            } catch(e) { this.error = '计算失败: ' + e.message; }
+            this.loading = false;
+        },
+
+        selectedIdx: null,
+
+        selectChannel(ch, idx) {
+            const pi = document.querySelector('input[name="price"]');
+            const oi = document.querySelector('input[name="old_price"]');
+            if (pi) { pi.value = ch.selling_price_cny ?? ''; pi.style.border = '2px solid #22c55e'; setTimeout(() => pi.style.border = '', 2000); }
+            if (oi) oi.value = (ch.selling_price_cny * 1.15).toFixed(2);
+            this.selectedIdx = (this.selectedIdx === idx) ? null : idx;
+        }
+    };
+}
+</script>
+
+<!-- Alpine.js 类目联想搜索 -->
+<script>
+function categorySearch(initialId, initialTitle) {
+    return {
+        query: '',
+        results: [],
+        selectedId: initialId || null,
+        selectedTitle: initialTitle || '',
+        loading: false,
+        timer: null,
+
+        search() {
+            const q = this.query.trim();
+            if (q.length < 2) { this.results = []; return; }
+            clearTimeout(this.timer);
+            this.timer = setTimeout(async () => {
+                this.loading = true;
+                try {
+                    const resp = await fetch(`/categories/api/classify?name=${encodeURIComponent(q)}`);
+                    if (resp.ok) {
+                        this.results = await resp.json();
+                    } else {
+                        this.results = [];
+                    }
+                } catch(e) {
+                    console.error(e);
+                }
+                this.loading = false;
+            }, 300);
+        },
+
+        select(r) {
+            this.selectedId = r.category_id;
+            this.selectedTitle = r.title;
+            this.results = [];
+            this.query = '';
+        },
+
+        clear() {
+            this.selectedId = null;
+            this.selectedTitle = '';
+        }
+    };
+}
+</script>
+{% endif %}
+
+{% endblock %}

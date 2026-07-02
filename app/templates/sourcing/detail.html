@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% block title %}{{ record.title_cn }} — 编辑上架 — Ozon ERP{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-4">
+    <a href="/sourcing/" class="text-blue-600 hover:underline text-sm">← 返回列表</a>
+    <div class="flex gap-2 flex-wrap">
+        <!-- 翻译按钮 -->
+        <button hx-post="/sourcing/api/{{ record.id }}/translate"
+                hx-target="#status-area"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+            🌐 翻译
+        </button>
+        <!-- 下载图片 -->
+        <button hx-post="/sourcing/api/{{ record.id }}/download-images"
+                hx-target="#status-area"
+                class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded text-sm">
+            📥 下载图片
+        </button>
+        <!-- 试算按钮 -->
+        <button hx-post="/sourcing/api/{{ record.id }}/calculate"
+                hx-target="#cost-card"
+                class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm">
+            💰 试算
+        </button>
+        <!-- 上架按钮 -->
+        <button hx-post="/sourcing/api/{{ record.id }}/push-to-ozon"
+                hx-target="#status-area"
+                hx-confirm="确对推送到 OZON 上架吗？"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
+            🚀 一键上架
+        </button>
+    </div>
+</div>
+
+<div id="status-area" class="mb-3"></div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- 左栏：基本信息 -->
+    <div class="space-y-4">
+
+        <!-- 状态卡片 -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-semibold text-lg">📋 基本信息</h2>
+                <span class="px-2 py-1 rounded text-xs
+                    {% if record.status in ('pushed','live') %}bg-green-100 text-green-800
+                    {% elif record.status == 'translated' %}bg-blue-100 text-blue-800
+                    {% elif record.status == 'cost_calculated' %}bg-purple-100 text-purple-800
+                    {% elif record.status == 'push_failed' %}bg-red-100 text-red-800
+                    {% else %}bg-gray-100 text-gray-600{% endif %}">
+                    {{ record.status }}
+                </span>
+            </div>
+
+            <!-- 1688链接 -->
+            <div class="mb-3">
+                <label class="text-xs text-gray-500">1688 来源</label>
+                <a href="{{ record.source_url }}" target="_blank" class="block text-blue-600 text-sm hover:underline break-all">
+                    {{ record.source_url[:80] }}{% if record.source_url | length > 80 %}...{% endif %}
+                </a>
+            </div>
+
+            <!-- 中文标题 -->
+            <div class="mb-3">
+                <label class="text-xs text-gray-500">中文标题</label>
+                <p class="text-sm">{{ record.title_cn }}</p>
+            </div>
+
+            <!-- 俄文标题（可编辑） -->
+            <div class="mb-3">
+                <label class="text-xs text-gray-500">俄文标题</label>
+                <textarea name="title_ru" rows="2"
+                          hx-post="/sourcing/api/{{ record.id }}/update"
+                          hx-trigger="change"
+                          hx-vals="js:{title_ru: this.value}"
+                          class="w-full border rounded px-3 py-2 text-sm mt-1">{{ record.title_ru or '' }}</textarea>
+            </div>
+
+            <!-- 货号 -->
+            {% if record.article_number %}
+            <div class="mb-3">
+                <label class="text-xs text-gray-500">货号</label>
+                <p class="text-sm font-mono">{{ record.article_number }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 商品描述 -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="font-semibold text-lg mb-3">📝 商品描述</h2>
+
+            <div class="mb-3">
+                <label class="text-xs text-gray-500">材质（中文）</label>
+                <p class="text-sm">{{ record.material_cn or '—' }}</p>
+            </div>
+            <div class="mb-3">
+                <label class="text-xs text-gray-500">材质（俄文）</label>
+                <textarea name="material_ru" rows="2"
+                          hx-post="/sourcing/api/{{ record.id }}/update"
+                          hx-trigger="change"
+                          hx-vals="js:{material_ru: this.value}"
+                          class="w-full border rounded px-3 py-2 text-sm mt-1">{{ record.material_ru or '' }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="text-xs text-gray-500">俄文详情描述</label>
+                <textarea name="description_ru" rows="4"
+                          hx-post="/sourcing/api/{{ record.id }}/update"
+                          hx-trigger="change"
+                          hx-vals="js:{description_ru: this.value}"
+                          class="w-full border rounded px-3 py-2 text-sm mt-1">{{ record.description_ru or '' }}</textarea>
+            </div>
+        </div>
+
+        <!-- SKU 列表 -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="font-semibold text-lg mb-3">📐 SKU 变体</h2>
+            {% if record.skus %}
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-left text-xs text-gray-500">
+                        <th class="px-2 py-2">中文规格</th>
+                        <th class="px-2 py-2">俄文规格</th>
+                        <th class="px-2 py-2">¥ 单价</th>
+                        <th class="px-2 py-2">起订</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sku in record.skus %}
+                    <tr class="border-t">
+                        <td class="px-2 py-2 text-xs">{{ sku.spec_cn }}</td>
+                        <td class="px-2 py-2 text-xs text-blue-600">{{ sku.spec_ru or '待翻译' }}</td>
+                        <td class="px-2 py-2 text-xs">¥{{ sku.price_cny }}</td>
+                        <td class="px-2 py-2 text-xs">{{ sku.moq }}件</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-sm text-gray-400">无 SKU</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 右栏：物流 + 试算 + 图片 -->
+    <div class="space-y-4">
+
+        <!-- 物流参数 -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="font-semibold text-lg mb-3">📏 物流参数</h2>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs text-gray-500">重量 (kg)</label>
+                    <input type="number" step="0.01" value="{{ record.weight_kg or '' }}"
+                           hx-post="/sourcing/api/{{ record.id }}/update"
+                           hx-trigger="change"
+                           name="weight_kg"
+                           class="w-full border rounded px-3 py-2 text-sm mt-1">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500">包装方式</label>
+                    <p class="text-sm mt-1">{{ record.package_type_cn or '—' }}</p>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500">长 (cm)</label>
+                    <input type="number" step="0.1" value="{{ record.length_cm or '' }}"
+                           hx-post="/sourcing/api/{{ record.id }}/update"
+                           hx-trigger="change"
+                           name="length_cm"
+                           class="w-full border rounded px-3 py-2 text-sm mt-1">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500">宽 (cm)</label>
+                    <input type="number" step="0.1" value="{{ record.width_cm or '' }}"
+                           hx-post="/sourcing/api/{{ record.id }}/update"
+                           hx-trigger="change"
+                           name="width_cm"
+                           class="w-full border rounded px-3 py-2 text-sm mt-1">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500">高 (cm)</label>
+                    <input type="number" step="0.1" value="{{ record.height_cm or '' }}"
+                           hx-post="/sourcing/api/{{ record.id }}/update"
+                           hx-trigger="change"
+                           name="height_cm"
+                           class="w-full border rounded px-3 py-2 text-sm mt-1">
+                </div>
+            </div>
+        </div>
+
+        <!-- 利润试算卡片 -->
+        <div id="cost-card">
+            <div class="bg-white rounded-lg shadow p-4">
+                <h2 class="font-semibold text-lg mb-3">💰 利润试算</h2>
+                {% if record.cost_data %}
+                {% set c = record.cost_data %}
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">采购成本</span>
+                        <span>¥{{ c.result.purchase_total_cny }} ({{ c.input.quantity }}件)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">国内运费</span>
+                        <span>¥{{ c.result.domestic_shipping_cny }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">计费重量</span>
+                        <span>{{ c.result.chargeable_weight_kg }}kg (实际{{ c.result.actual_weight_kg }}kg / 体积{{ c.result.volume_weight_kg }}kg)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">国际运费</span>
+                        <span>¥{{ c.result.freight_total_cny }} (¥{{ c.rates.freight_per_kg_cny }}/kg)</span>
+                    </div>
+                    <hr>
+                    <div class="flex justify-between font-semibold">
+                        <span>总成本</span>
+                        <span>¥{{ c.result.total_cost_cny }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">单件成本</span>
+                        <span>¥{{ c.result.cost_per_unit_cny }}</span>
+                    </div>
+                    <hr>
+                    <div class="flex justify-between text-green-600 font-bold">
+                        <span>建议售价 (OZON)</span>
+                        <span>₽{{ c.result.suggested_price_rub }}</span>
+                    </div>
+                    <div class="flex justify-between text-gray-500">
+                        <span>OZON佣金 ({{ (c.rates.ozon_commission_rate * 100) | round(0) }}%)</span>
+                        <span>₽{{ c.result.ozon_commission_rub }}</span>
+                    </div>
+                    <div class="flex justify-between text-blue-600 font-semibold">
+                        <span>预估利润 / 件</span>
+                        <span>₽{{ c.result.profit_per_unit_rub }} ({{ c.result.profit_margin_pct }}%)</span>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-400">点击上方「💰 利润试算」按钮计算</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 图片区 -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="font-semibold text-lg mb-3">🖼️ 商品图片 ({{ record.images_1688_urls | length }})</h2>
+            {% if record.images_1688_urls %}
+            <div class="grid grid-cols-3 gap-2">
+                {% for url in record.images_1688_urls[:9] %}
+                <img src="{{ url }}" class="w-full h-24 object-cover rounded border" alt=""
+                     onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖼️</text></svg>'">
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-400">无图片</p>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

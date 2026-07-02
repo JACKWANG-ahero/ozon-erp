@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name_ru }} — Ozon ERP{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <a href="/products/" class="text-sm text-blue-600 hover:underline">← 返回商品列表</a>
+        <h1 class="text-2xl font-bold mt-1">{{ product.name_ru }}</h1>
+        {% if product.name_zh %}<p class="text-gray-500">{{ product.name_zh }}</p>{% endif %}
+    </div>
+    <div class="flex gap-2">
+        {% if product.status in ('draft', 'import_error') or product.sync_status == 'modified' %}
+        <button hx-post="/products/{{ product.id }}/import" hx-target="#import-result"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
+            🚀 推送到Ozon
+        </button>
+        {% endif %}
+        {% if product.status != 'archived' %}
+        <button hx-post="/products/{{ product.id }}/archive" hx-target="body"
+                class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded text-sm"
+                onclick="return confirm('确定归档 {{ product.offer_id }}？')">
+            📦 归档
+        </button>
+        {% endif %}
+        <button hx-post="/products/{{ product.id }}/delete" hx-target="body"
+                class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm"
+                onclick="return confirm('删除 {{ product.offer_id }}？不可恢复！')">
+            🗑️ 删除
+        </button>
+    </div>
+</div>
+
+<div id="import-result">
+    {% if import_result %}
+    {% if import_result.failed == 0 and import_result.success > 0 %}
+    <div class="mb-4 p-4 rounded bg-green-100 border border-green-400">
+        <div class="font-medium text-green-800">✅ 推送成功！</div>
+        <div class="text-sm text-green-600">成功 {{ import_result.success }} 个，失败 {{ import_result.failed }} 个</div>
+    </div>
+    {% else %}
+    <div class="mb-4 p-4 rounded bg-red-50 border border-red-300">
+        <div class="font-medium text-red-700">❌ 推送失败</div>
+        <div class="text-sm text-red-600">成功 {{ import_result.success }}，失败 {{ import_result.failed }}</div>
+        {% for err in import_result.errors %}
+        <div class="mt-2 p-2 bg-red-100 rounded text-sm">
+            {% if err.offer_id %}<div class="font-mono text-xs mb-1">SKU: {{ err.offer_id }}</div>{% endif %}
+            {% for e in err.errors %}
+            <div class="text-red-700">
+                {% if e.code %}[{{ e.code }}] {% endif %}{{ e.message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <script>setTimeout(() => document.getElementById('import-result').innerHTML = '', 30000)</script>
+    {% endif %}
+</div>
+
+<!-- 商品详情网格 -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- 主体信息 -->
+    <div class="md:col-span-2 space-y-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">基本信息</h2>
+            <dl class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <dt class="text-gray-500">Offer ID (SKU)</dt>
+                    <dd class="font-mono">{{ product.offer_id }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Ozon商品ID</dt>
+                    <dd class="font-mono">{{ product.ozon_product_id or '未推送' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">类目ID</dt>
+                    <dd>{{ product.category_id or '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">品牌</dt>
+                    <dd>{{ product.brand or '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">条形码</dt>
+                    <dd class="font-mono">{{ product.barcode or '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">状态 / 同步</dt>
+                    <dd>
+                        <span class="px-2 py-0.5 rounded text-xs
+                            {% if product.status == 'imported' %}bg-green-100 text-green-800
+                            {% elif product.status == 'draft' %}bg-gray-100 text-gray-800
+                            {% elif product.status == 'import_error' %}bg-red-100 text-red-800
+                            {% endif %}">
+                            {% if product.status == 'imported' %}已上架{% elif product.status == 'draft' %}草稿{% elif product.status == 'import_error' %}上传失败{% else %}{{ product.status }}{% endif %}
+                        </span>
+                        <span class="ml-1 px-2 py-0.5 rounded text-xs
+                            {% if product.sync_status == 'synced' %}bg-green-100 text-green-800
+                            {% elif product.sync_status == 'modified' %}bg-yellow-100 text-yellow-800
+                            {% elif product.sync_status == 'local_only' %}bg-blue-100 text-blue-800
+                            {% endif %}">
+                            {% if product.sync_status == 'synced' %}已同步{% elif product.sync_status == 'modified' %}待推送{% elif product.sync_status == 'local_only' %}仅本地{% else %}{{ product.sync_status }}{% endif %}
+                        </span>
+                    </dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- 尺寸重量 -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">尺寸与重量</h2>
+            <dl class="grid grid-cols-4 gap-4 text-sm">
+                <div><dt class="text-gray-500">高</dt><dd>{{ product.height or '—' }} mm</dd></div>
+                <div><dt class="text-gray-500">长</dt><dd>{{ product.depth or '—' }} mm</dd></div>
+                <div><dt class="text-gray-500">宽</dt><dd>{{ product.width or '—' }} mm</dd></div>
+                <div><dt class="text-gray-500">重量</dt><dd>{{ product.weight or '—' }} g</dd></div>
+            </dl>
+        </div>
+
+        <!-- 描述 -->
+        {% if product.description_ru %}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">商品描述</h2>
+            <div class="text-sm prose max-w-none">{{ product.description_ru }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 侧边栏 -->
+    <div class="space-y-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">主图</h2>
+            {% if product.primary_image_url %}
+            <img src="{{ product.primary_image_url }}" class="w-full rounded" alt="">
+            {% else %}
+            <div class="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">暂无图片</div>
+            {% endif %}
+        </div>
+
+        {% if product.attributes %}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">属性 ({{ product.attributes|length }})</h2>
+            <dl class="space-y-2 text-sm">
+                {% for attr in product.attributes %}
+                <div class="flex justify-between">
+                    <dt class="text-gray-500">#{{ attr.attribute_id }}</dt>
+                    <dd class="font-mono text-xs truncate max-w-[150px]">
+                        {{ attr.value_string or attr.value_int or attr.value_numeric or attr.value_json or '—' }}
+                    </dd>
+                </div>
+                {% endfor %}
+            </dl>
+        </div>
+        {% endif %}
+
+        <div class="bg-white rounded-lg shadow p-6 text-xs text-gray-400">
+            <div>创建时间：{{ product.created_at }}</div>
+            <div>更新时间：{{ product.updated_at }}</div>
+            {% if product.last_synced_at %}<div>最后同步：{{ product.last_synced_at }}</div>{% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

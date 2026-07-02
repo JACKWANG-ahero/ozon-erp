@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}退货管理 — Ozon ERP{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">↩️ 退货管理</h1>
+</div>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full text-sm">
+        <thead>
+            <tr class="bg-gray-100 text-left">
+                <th class="px-4 py-3">退货ID</th>
+                <th class="px-4 py-3">订单号</th>
+                <th class="px-4 py-3">商品</th>
+                <th class="px-4 py-3">数量</th>
+                <th class="px-4 py-3">金额</th>
+                <th class="px-4 py-3">状态</th>
+                <th class="px-4 py-3">退货日期</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in returns %}
+            <tr class="border-t hover:bg-gray-50">
+                <td class="px-4 py-2 font-mono text-xs">{{ r.ozon_return_id or r.id }}</td>
+                <td class="px-4 py-2 text-xs">{{ r.posting_number or '—' }}</td>
+                <td class="px-4 py-2 text-xs">{{ r.product_name or '—' }}</td>
+                <td class="px-4 py-2 text-xs">{{ r.quantity or '—' }}</td>
+                <td class="px-4 py-2 text-xs">{{ r.price or '—' }}</td>
+                <td class="px-4 py-2"><span class="text-xs px-2 py-0.5 rounded {{ 'bg-green-100 text-green-800' if r.status == 'accepted' else 'bg-gray-100 text-gray-800' }}">{{ r.status or '—' }}</span></td>
+                <td class="px-4 py-2 text-xs text-gray-500">{{ r.return_date.strftime('%Y-%m-%d') if r.return_date else '—' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="px-4 py-8 text-center text-gray-400">暂无退货数据</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if total > limit %}
+<div class="flex justify-between items-center mt-4 text-sm">
+    <span class="text-gray-500">共 {{ total }} 个退货</span>
+    <div class="flex gap-2">
+        {% if offset > 0 %}
+        <a href="?offset={{ [0, offset - limit]|max }}&limit={{ limit }}" class="bg-white border rounded px-3 py-1 hover:bg-gray-50">← 上一页</a>
+        {% endif %}
+        {% if offset + limit < total %}
+        <a href="?offset={{ offset + limit }}&limit={{ limit }}" class="bg-white border rounded px-3 py-1 hover:bg-gray-50">下一页 →</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

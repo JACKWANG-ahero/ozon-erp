@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Ozon ERP 管理系统{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="bg-white text-gray-700 shadow-sm border-b" x-data="{ mobileOpen: false }">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between h-14">
+                <div class="flex items-center gap-6">
+                    <a href="/" class="text-xl font-bold tracking-tight text-blue-600">
+                        📦 Ozon ERP
+                    </a>
+                    <div class="hidden md:flex items-center gap-1">
+                        <a href="/" class="px-3 py-2 rounded text-sm {{ 'bg-gray-100 text-blue-600' if page == 'dashboard' else 'hover:bg-gray-100' }}">📊 首页仪表盘</a>
+                        <a href="/categories/classify" class="px-3 py-2 rounded text-sm {{ 'bg-gray-100 text-blue-600' if page == 'categories' else 'hover:bg-gray-100' }}">🔍 类目查询</a>
+                        <a href="/products/" class="px-3 py-2 rounded text-sm {{ 'bg-gray-100 text-blue-600' if page == 'products' else 'hover:bg-gray-100' }}">📦 商品管理</a>
+                        <a href="/orders/" class="px-3 py-2 rounded text-sm {{ 'bg-gray-100 text-blue-600' if page == 'orders' else 'hover:bg-gray-100' }}">📋 订单管理</a>
+                        <a href="/inventory/" class="px-3 py-2 rounded text-sm {{ 'bg-gray-100 text-blue-600' if page == 'inventory' else 'hover:bg-gray-100' }}">🏭 库存管理</a>
+                        <a href="/pricing/" class="px-3 py-2 rounded text-sm {{ 'bg-gray-100 text-blue-600' if page == 'pricing' else 'hover:bg-gray-100' }}">💰 价格管理</a>
+                        <a href="/finance/" class="px-3 py-2 rounded text-sm {{ 'bg-gray-100 text-blue-600' if page == 'finance' else 'hover:bg-gray-100' }}">💳 财务管理</a>
+                        <a href="/returns/" class="px-3 py-2 rounded text-sm {{ 'bg-gray-100 text-blue-600' if page == 'returns' else 'hover:bg-gray-100' }}">↩️ 退货管理</a>
+                        <a href="/sourcing/" class="px-3 py-2 rounded text-sm {{ 'bg-gray-100 text-blue-600' if page == 'sourcing' else 'hover:bg-gray-100' }}">🛒 1688选品</a>
+                        <a href="/sync/" class="px-3 py-2 rounded text-sm {{ 'bg-gray-100 text-blue-600' if page == 'settings' else 'hover:bg-gray-100' }}">⚙️ 系统设置</a>
+                    </div>
+                </div>
+                <button @click="mobileOpen = !mobileOpen" class="md:hidden text-gray-700 hover:text-gray-900">☰</button>
+            </div>
+            <!-- 移动端菜单 -->
+            <div x-show="mobileOpen" @click.outside="mobileOpen = false" class="md:hidden pb-2 bg-white">
+                <a href="/" class="block px-3 py-2 rounded text-sm hover:bg-gray-100">首页仪表盘</a>
+                <a href="/products/" class="block px-3 py-2 rounded text-sm hover:bg-gray-100">商品管理</a>
+                <a href="/orders/" class="block px-3 py-2 rounded text-sm hover:bg-gray-100">订单管理</a>
+                <a href="/inventory/" class="block px-3 py-2 rounded text-sm hover:bg-gray-100">库存管理</a>
+                <a href="/pricing/" class="block px-3 py-2 rounded text-sm hover:bg-gray-100">价格管理</a>
+                <a href="/finance/" class="block px-3 py-2 rounded text-sm hover:bg-gray-100">财务管理</a>
+                <a href="/sync/" class="block px-3 py-2 rounded text-sm hover:bg-gray-100">系统设置</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 消息提示 -->
+    {% if message %}
+    <div class="max-w-7xl mx-auto px-4 mt-3">
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">{{ message }}</div>
+    </div>
+    {% endif %}
+    {% if error %}
+    <div class="max-w-7xl mx-auto px-4 mt-3">
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    <!-- 主体内容 -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="text-center text-xs text-gray-400 py-4 border-t mt-8">
+        Ozon ERP v1.0 — 俄罗斯电商管理系统
+    </footer>
+</body>
+</html>
