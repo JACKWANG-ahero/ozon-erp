@@ -62,10 +62,10 @@
                         <input type="file" name="image_files" accept="image/jpeg,image/png,image/webp" multiple
                                class="w-full border rounded px-3 py-2 text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-orange-50 file:text-orange-700"
                                @change="handleFiles($event)">
-                        <div class="mt-2 grid grid-cols-6 gap-1">
+                        <div class="mt-2 flex flex-wrap gap-1 max-h-24 overflow-y-auto">
                             <template x-for="(img, idx) in previews" :key="idx">
-                                <div class="relative group">
-                                    <img :src="img" class="w-full aspect-square object-cover rounded border cursor-pointer"
+                                <div class="relative group flex-shrink-0">
+                                    <img :src="img" class="h-20 w-20 object-cover rounded border cursor-pointer hover:ring-2 hover:ring-orange-400"
                                          @click="zoom(idx)">
                                     <span x-show="idx === 0" class="absolute top-0 left-0 bg-orange-500 text-white text-xs px-1 rounded-br">主图</span>
                                     <button type="button" @click="remove(idx)"

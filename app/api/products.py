@@ -405,6 +405,7 @@ async def api_generate_description(
     if image_files and settings.DOUBAO_API_KEY:
         # Save uploaded images temporarily for Doubao
         import tempfile
+        from pathlib import Path
         import uuid as uuid_module
 
         temp_paths = []
