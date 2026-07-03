@@ -59,6 +59,7 @@ class Product(Base):
     weight: Mapped[float | None] = mapped_column(Numeric(10, 3))
 
     primary_image_url: Mapped[str | None] = mapped_column(String(2000))
+    keywords: Mapped[str | None] = mapped_column(String(2000))  # Ozon hashtags for reference
 
     # Status tracking
     status: Mapped[str] = mapped_column(String(30), default="draft")

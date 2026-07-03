@@ -49,6 +49,7 @@ class ProductService:
             width=data.get("width"),
             weight=data.get("weight"),
             primary_image_url=data.get("primary_image_url"),
+            keywords=data.get("keywords"),
             status="draft",
             sync_status="local_only",
         )

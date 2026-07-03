@@ -101,6 +101,7 @@ async def product_create(
     width: float = Form(None),
     weight: float = Form(None),
     description_ru: str = Form(""),
+    keywords: str = Form(""),
     db: AsyncSession = Depends(get_db),
 ):
     import uuid as uuid_module
@@ -149,6 +150,7 @@ async def product_create(
         "old_price": old_price,
         "vat": vat,
         "currency_code": currency_code,
+        "keywords": keywords,
     })
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/products/", status_code=303)

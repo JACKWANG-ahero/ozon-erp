@@ -226,6 +226,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">关键词 (以#隔开)</label>
                         <input type="text" name="keywords" x-model="keywords"
                                class="w-full border rounded px-3 py-2 text-sm bg-blue-50" placeholder="#вышивка #набор">
+                    <!-- 隐藏字段 -->
+                    <input type="hidden" name="keywords" :value="keywords">
                     </div>
 
                     <!-- 隐藏字段：默认增值税0%，货币CNY，品牌无品牌 -->

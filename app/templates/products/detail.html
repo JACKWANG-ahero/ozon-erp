@@ -166,6 +166,13 @@
             {% endif %}
         </div>
 
+        {% if product.keywords %}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-2">🏷️ 关键词</h2>
+            <div class="text-sm text-blue-700 break-all">{{ product.keywords }}</div>
+        </div>
+        {% endif %}
+
         {% if product.attributes %}
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-lg font-semibold mb-4">属性 ({{ product.attributes|length }})</h2>
