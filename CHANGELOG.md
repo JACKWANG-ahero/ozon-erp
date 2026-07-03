@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-07-03 (UPDATE 7)
+
+### Added
+- 1688 进货单 API 探测脚本（`scripts/inspect_1688_cart.py`）— Playwright 拦截 XHR 获取商品数据
+- `CartCollector` 采集器（`app/services/cart_collector.py`）— 解析进货单 JSON → SourcingRecord
+- 进货单导入 API `POST /sourcing/api/import-from-cart`
+
+### Removed
+- 1688 采集功能全部移除（用户要求）
+
+### Changed
+- Doubao API 格式修正：`/responses` → `/chat/completions`
+- 消息格式：`input` → `messages`，`input_image` → `image_url`（嵌套对象）
+- 响应解析：`choices[0].message.content`
+- 豆包翻译话术简化为固定中文提示词
+
+### Fixed
+- 服务器 8080 端口 5 个僵尸进程 → 切换 8081 端口
+- `config.py` DOUBAO 重复配置清理
+- `products.py` 翻译 API `Path`/`settings` 导入修复
+- 关键词格式自动去除下划线
+
+---
+
 ## 2026-07-02 (UPDATE 6)
 
 ### Added
