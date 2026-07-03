@@ -108,11 +108,6 @@
                             <span x-show="!genDesc">📝 生成描述+关键词</span>
                             <span x-show="genDesc">生成中...</span>
                         </button>
-                        <button type="button" @click="resizeImages()" :disabled="resizing"
-                                class="bg-teal-500 hover:bg-teal-600 disabled:bg-gray-400 text-white px-3 py-1.5 rounded text-sm">
-                            <span x-show="!resizing">📐 图片转3:4</span>
-                            <span x-show="resizing">处理中...</span>
-                        </button>
                     </div>
 
                     <!-- 俄语标题 -->
@@ -269,7 +264,6 @@ function productForm(initial) {
         categoryId: initial ? initial.category_id || null : null,
         translating: false,
         genDesc: false,
-        resizing: false,
         statusMsg: '',
 
         async translateTitle() {
@@ -300,13 +294,6 @@ function productForm(initial) {
             this.genDesc = false;
         },
 
-        async resizeImages() {
-            this.resizing = true; this.statusMsg = '';
-            const inputs = document.querySelectorAll('input[name=image_files]');
-            if (!inputs.length) { this.statusMsg = '<span class=text-red-500>请先上传图片</span>'; this.resizing = false; return; }
-            this.statusMsg = '<span class=text-blue-500>📐 请在左侧重新选择图片自动裁剪为3:4</span>';
-            this.resizing = false;
-        }
     };
 }
 

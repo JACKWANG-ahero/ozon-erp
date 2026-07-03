@@ -100,7 +100,7 @@ class OzonClient:
         body: dict[str, Any] | None = None,
         *,
         timeout: float = 30.0,
-        max_retries: int = 5,
+        max_retries: int = 0,  # NO retries — 429 = stop immediately
     ) -> dict[str, Any]:
         """Send a request, auto-retrying on 429 with long backoff."""
         client = await self._get_client()

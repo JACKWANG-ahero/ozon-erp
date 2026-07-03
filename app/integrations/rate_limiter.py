@@ -22,7 +22,7 @@ class OzonRateLimiter:
     """
 
     def __init__(self) -> None:
-        self.min_interval: float = 5.0        # seconds between any two calls
+        self.min_interval: float = 15.0       # seconds between any two calls
         self.max_per_minute: int = 60
         self._last_call: float = 0.0
         self._call_times: list[float] = []
