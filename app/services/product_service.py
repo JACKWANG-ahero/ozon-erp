@@ -1,4 +1,4 @@
-"""Product service — local product CRUD + Ozon sync."""
+"""Product service �?local product CRUD + Ozon sync."""
 
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ class ProductService:
             price=data.get("price", "0"),
             old_price=data.get("old_price", "0"),
             vat=data.get("vat", "0"),
-            currency=data.get("currency_code", "CNY"),
+            currency=data.get("currency_code", "RUB"),
             source="manual",
         )
         self.db.add(price)
@@ -232,7 +232,7 @@ class ProductService:
                 price_str=str(p.price.price) if p.price and p.price.price else "0",
                 old_price_str=str(p.price.old_price) if p.price and p.price.old_price else "0",
                 vat_str=str(p.price.vat) if p.price and p.price.vat else "0",
-                currency_str=str(p.price.currency) if p.price and p.price.currency else "CNY",
+                currency_str=str(p.price.currency) if p.price and p.price.currency else "RUB",
             )
             for p in products
         ]
@@ -254,8 +254,8 @@ class ProductService:
             if not r:
                 failed += 1
                 p.status = "import_error"
-                p.import_errors = {"errors": [{"code": "NO_RESULT", "message": "Ozon 未返回此商品的结果"}]}
-                errors.append({"offer_id": p.offer_id, "errors": [{"code": "NO_RESULT", "message": "Ozon 未返回此商品的结果"}]})
+                p.import_errors = {"errors": [{"code": "NO_RESULT", "message": "Ozon 未返回此商品的结�?}]}
+                errors.append({"offer_id": p.offer_id, "errors": [{"code": "NO_RESULT", "message": "Ozon 未返回此商品的结�?}]})
             elif r.get("errors"):
                 failed += 1
                 p.status = "import_error"
@@ -274,13 +274,13 @@ class ProductService:
     def _to_ozon_import_format(
         self, product: Product, category: Any = None,
         price_str: str = "0", old_price_str: str = "0", vat_str: str = "0",
-        currency_str: str = "CNY",
+        currency_str: str = "RUB",
     ) -> dict[str, Any]:
-        """Map local Product model → Ozon /v3/product/import item format.
+        """Map local Product model �?Ozon /v3/product/import item format.
 
         v3 JSON schema (matches official docs):
         - ``description_category_id`` (NOT ``category_id``)
-        - ``type_id`` — required, from category tree
+        - ``type_id`` �?required, from category tree
         - ``images`` is a list of URL strings (not objects)
         - ``attributes`` uses ``values`` array with ``dictionary_value_id`` + ``value``
         - No ``vendor``, no ``description`` at item level
@@ -292,7 +292,7 @@ class ProductService:
         # v3 attributes format: {id, complex_id, values: [{dictionary_value_id?, value}]}
         # Per official example:
         #   - Dictionary-based: {"dictionary_value_id": 971082156, "value": "麦克风架"}
-        #   - Text-based:       {"value": "一套X3NFC保护膜..."}
+        #   - Text-based:       {"value": "一套X3NFC保护�?.."}
         attributes = []
         for attr in product.attributes:
             val = (
@@ -335,8 +335,8 @@ class ProductService:
             "description_category_id": product.category_id or 0,
             "type_id": type_id,
             "barcode": product.barcode or "",
-            "price": price_str,
-            "old_price": old_price_str,
+            "price": str(int(float(price_str))) if price_str else "0",
+            "old_price": str(int(float(old_price_str))) if old_price_str else "0",
             "vat": vat_str,
             "currency_code": currency_str,
             "images": images,

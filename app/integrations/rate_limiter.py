@@ -29,11 +29,10 @@ class OzonRateLimiter:
         # Load persisted cooldown from file (survives restart)
         self._cooldown_file = "ozon_cooldown.txt"
         self._cooldown_until: float = self._load_cooldown()
-        self._cooldown_seconds: float = 30.0  # doubles on each 429
-        self._lock = asyncio.Lock()
-        self._sync_lock = threading.Lock()
+       self._cooldown_seconds: float = 30.0  # doubles on each 429
+       self._lock = asyncio.Lock()
 
-    def _load_cooldown(self) -> float:
+   def _load_cooldown(self) -> float:
         try:
             with open(self._cooldown_file) as f:
                 return float(f.read().strip())
@@ -79,17 +78,17 @@ class OzonRateLimiter:
             self._call_times.append(now)
             self._last_call = now
 
-    def report_429(self) -> None:
-        """Trigger cooldown after a 429, doubling each time (thread-safe)."""
-        with self._sync_lock:
+    async def report_429(self) -> None:
+        """Trigger cooldown after a 429, doubling each time."""
+        async with self._lock:
             self._cooldown_until = time.monotonic() + self._cooldown_seconds
             self._save_cooldown(self._cooldown_until)
             logger.warning("429 received, cooldown %.0fs", self._cooldown_seconds)
             self._cooldown_seconds = min(self._cooldown_seconds * 2, 300.0)
 
-    def report_success(self) -> None:
-        """Reset cooldown backoff on success (thread-safe)."""
-        with self._sync_lock:
+    async def report_success(self) -> None:
+        """Reset cooldown backoff on success."""
+        async with self._lock:
             self._cooldown_seconds = max(self._cooldown_seconds / 2, 30.0)
             self._save_cooldown(0.0)
 

@@ -123,12 +123,12 @@ class OzonClient:
                     continue
 
             if response.status_code < 400:
-                ozon_rate_limiter.report_success()
+                await ozon_rate_limiter.report_success()
                 return response.json()
 
             # Error handling
             if response.status_code == 429:
-                ozon_rate_limiter.report_429()
+                await ozon_rate_limiter.report_429()
                 if attempt < max_retries:
                     logger.warning(
                         "429 on %s, 第%d次重试, 等待%ds",
