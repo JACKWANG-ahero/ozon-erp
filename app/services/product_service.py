@@ -210,21 +210,11 @@ class ProductService:
         if not products:
             return {"success": 0, "failed": 0, "errors": []}
 
-        # Validate: Ozon requires at least 1 image per product
+        # Ozon allows products without images (can add later via upload_images)
         no_image_products = [p for p in products if not p.images]
         if no_image_products:
-            skus = [p.offer_id for p in no_image_products]
-            return {
-                "success": 0,
-                "failed": len(no_image_products),
-                "errors": [
-                    {
-                        "offer_id": sku,
-                        "errors": [{"code": "NO_IMAGE", "message": "商品图片为必填项，请先添加至少1张图片"}],
-                    }
-                    for sku in skus
-                ],
-            }
+            logger.warning("Pushing %d products without images: %s",
+                          len(no_image_products), [p.offer_id for p in no_image_products])
 
         # Fetch categories for type_id lookup
         cat_ids = {p.category_id for p in products if p.category_id}
@@ -336,8 +326,8 @@ class ProductService:
         width = float(product.width) if product.width else 0
         weight = float(product.weight) if product.weight else 0
 
-        # type_id from category lookup (must be integer, never None)
-        type_id = (category.type_id or 0) if category else 0
+        # type_id from category lookup (must be > 0 for Ozon)
+        type_id = (category.type_id or 94896) if category else 94896  # 94896 = Наборы для вышивания
 
         return {
             "offer_id": product.offer_id,
