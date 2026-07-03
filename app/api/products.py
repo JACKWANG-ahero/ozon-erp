@@ -122,24 +122,14 @@ async def product_create(
                 await f.write(content)
             local_paths.append(file_path)
 
-    if not local_paths:
-        return templates.TemplateResponse(
-            request,
-            "products/form.html",
-            {
-                "page": "products",
-                "product": None,
-                "error": "商品图片为必填项！请至少选择1张主图。",
-            },
-        )
-
-    # Upload to GitHub CDN (if configured) for Ozon-accessible URLs
-    from app.services.image_handler import upload_local_images_to_cdn
-    cdn_urls = await upload_local_images_to_cdn([str(p) for p in local_paths])
-    image_urls = cdn_urls if cdn_urls else [f"/static/uploads/{p.name}" for p in local_paths]
-
-    if not cdn_urls:
-        logger.warning("GitHub CDN not configured — images will not be accessible from Ozon")
+    image_urls: list[str] = []
+    if local_paths:
+        # Upload to GitHub CDN (if configured) for Ozon-accessible URLs
+        from app.services.image_handler import upload_local_images_to_cdn
+        cdn_urls = await upload_local_images_to_cdn([str(p) for p in local_paths])
+        image_urls = cdn_urls if cdn_urls else [f"/static/uploads/{p.name}" for p in local_paths]
+        if not cdn_urls:
+            logger.warning("GitHub CDN not configured — images will not be accessible from Ozon")
 
     svc = _svc(db)
     await svc.create_product({

@@ -117,7 +117,12 @@ class ProductService:
         from sqlalchemy.orm import selectinload
         result = await self.db.execute(
             select(Product)
-            .options(selectinload(Product.images), selectinload(Product.attributes))
+            .options(
+                selectinload(Product.images),
+                selectinload(Product.attributes),
+                selectinload(Product.category),
+                selectinload(Product.price),
+            )
             .where(Product.id == product_id)
         )
         return result.scalar_one_or_none()

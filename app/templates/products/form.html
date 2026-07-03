@@ -17,7 +17,6 @@
                 <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Offer ID (SKU) *</label>
                 <input type="text" name="offer_id" required class="border rounded px-3 py-2 text-sm flex-1" placeholder="CIXIU-004"
                        value="{{ product.offer_id if product else '' }}" {% if product %}readonly{% endif %}>
-                <input type="hidden" name="category_id" :value="categoryId" required>
             </div>
         </div>
 
@@ -197,6 +196,7 @@
 
                     <!-- 类目联想 -->
                     <div class="mb-3" x-data="categorySearch({{ product.category_id if product and product.category_id else 'null' }}, '{{ product.category.title_ru if product and product.category else '' }}')">
+                        <input type="hidden" name="category_id" :value="selectedId" required>
                         <label class="block text-sm font-medium text-gray-700 mb-1">🗂️ Ozon类目 *</label>
                         <div x-show="selectedId" class="bg-blue-50 border border-blue-200 rounded p-1 text-xs flex justify-between mb-1">
                             <span>🏷️ <b x-text="selectedId"></b> — <span x-text="selectedTitle"></span></span>
@@ -356,7 +356,7 @@ function categorySearch(initialId, initialTitle) {
                 this.loading = false;
             }, 300);
         },
-        select(r) { this.selectedId = r.category_id; this.selectedTitle = r.title; this.results = []; this.query = ''; },
+        select(r) { this.selectedId = r.category_id; this.selectedTitle = r.title; this.results = []; this.query = ''; let el=document.getElementById('category-id-input'); if(el) el.value=r.category_id; },
         clear() { this.selectedId = null; this.selectedTitle = ''; }
     };
 }

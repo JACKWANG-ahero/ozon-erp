@@ -129,11 +129,40 @@
     <!-- 侧边栏 -->
     <div class="space-y-6">
         <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold mb-4">主图</h2>
-            {% if product.primary_image_url %}
-            <img src="{{ product.primary_image_url }}" class="w-full rounded" alt="">
+            <h2 class="text-lg font-semibold mb-3">🖼️ 商品图片 ({{ product.images|length }})</h2>
+            {% if product.images %}
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                {% for img in product.images %}
+                <div class="relative">
+                    <img src="{{ img.url }}" class="w-full aspect-square object-cover rounded border" alt="">
+                    {% if img.is_primary %}
+                    <span class="absolute top-0 left-0 bg-blue-500 text-white text-xs px-1 rounded-br">主图</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="space-y-1 text-xs">
+                {% for img in product.images %}
+                <div class="flex items-center gap-1">
+                    {% if 'raw.githubusercontent.com' in img.url %}
+                    <span class="text-green-600">🌐 CDN</span>
+                    {% else %}
+                    <span class="text-red-500">⚠️ 本地</span>
+                    {% endif %}
+                    <span class="text-gray-400 truncate">{{ img.url[:60] }}{% if img.url|length > 60 %}...{% endif %}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% if product.images and product.images[0].url.startswith('/static/') %}
+            <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
+                ⚠️ 图片为本地路径，Ozon 无法下载。需上传后通过 GitHub CDN 转换为公网 URL 才能推送。
+            </div>
+            {% endif %}
             {% else %}
-            <div class="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">暂无图片</div>
+            <div class="py-6 text-center text-gray-400">
+                📷 暂无图片
+                <div class="mt-1 text-xs">图片不是必填项，但推送到 Ozon 前需上传</div>
+            </div>
             {% endif %}
         </div>
 
