@@ -27,20 +27,20 @@ async def _call_doubao(image_paths: list[str], prompt_text: str) -> str | None:
             img_bytes = Path(path).read_bytes()
             b64 = base64.b64encode(img_bytes).decode()
             content.append({
-                "type": "input_image",
-                "image_url": f"data:image/jpeg;base64,{b64}",
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
             })
         except Exception as e:
             logger.warning("Failed to read image %s: %s", path, e)
 
-    content.append({"type": "input_text", "text": prompt_text})
+    content.append({"type": "text", "text": prompt_text})
 
     payload = {
         "model": settings.DOUBAO_MODEL,
-        "input": [{"role": "user", "content": content}],
+        "messages": [{"role": "user", "content": content}],
     }
 
-    url = f"{settings.DOUBAO_BASE_URL}/responses"
+    url = f"{settings.DOUBAO_BASE_URL}/chat/completions"
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.post(
@@ -57,10 +57,8 @@ async def _call_doubao(image_paths: list[str], prompt_text: str) -> str | None:
         data = resp.json()
 
     try:
-        output = data.get("output", [{}])[0]
-        text = output.get("content", [{}])[0].get("text", "")
-        if not text:
-            text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        # ARK standard: {"choices": [{"message": {"content": "..."}}]}
+        text = data["choices"][0]["message"]["content"]
         return text.strip()
     except (KeyError, IndexError):
         return None
