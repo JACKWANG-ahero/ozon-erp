@@ -97,6 +97,65 @@ async def upload_local_images_to_cdn(local_paths: list[str]) -> list[str]:
     return results
 
 
+def pad_to_ratio(
+    file_path: str | Path,
+    target_ratio: tuple[int, int] = (3, 4),
+    fill_color: str = "white",
+) -> str | None:
+    """Pad image edges to achieve target aspect ratio, preserving full content.
+
+    Unlike cropping, this adds background to the shorter sides so nothing is cut off.
+    The original image is centered within the padded canvas.
+
+    Args:
+        file_path: Path to the local image file.
+        target_ratio: (width, height) ratio, default (3, 4) for Ozon.
+        fill_color: Padding color — 'white', 'black', or hex like '#FFFFFF'.
+
+    Returns:
+        Path to the padded image file (overwrites original), or None on error.
+    """
+    try:
+        from PIL import Image
+
+        fp = Path(file_path)
+        img = Image.open(fp).convert("RGB")
+
+        tw, th = target_ratio
+        w, h = img.size
+        current_ratio = w / h
+        target = tw / th
+
+        if abs(current_ratio - target) < 0.01:
+            # Already correct ratio — return as-is
+            return str(fp)
+
+        if current_ratio > target:
+            # Image too wide → pad top and bottom
+            new_h = int(w / target)
+            new_w = w
+        else:
+            # Image too tall → pad left and right
+            new_w = int(h * target)
+            new_h = h
+
+        # Create new canvas with padding color
+        padded = Image.new("RGB", (new_w, new_h), fill_color)
+        # Center original image
+        paste_x = (new_w - w) // 2
+        paste_y = (new_h - h) // 2
+        padded.paste(img, (paste_x, paste_y))
+
+        # Save over original
+        padded.save(fp, "JPEG", quality=92)
+        logger.info("Padded %s: %dx%d → %dx%d (ratio %d:%d)", fp.name, w, h, new_w, new_h, tw, th)
+        return str(fp)
+
+    except Exception as e:
+        logger.error("Failed to pad image %s: %s", file_path, e)
+        return None
+
+
 class ImageHandler:
     """Download images from 1688 to local storage.
 

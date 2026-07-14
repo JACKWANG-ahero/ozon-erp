@@ -125,8 +125,11 @@ async def product_create(
 
     image_urls: list[str] = []
     if local_paths:
-        # Upload to GitHub CDN (if configured) for Ozon-accessible URLs
-        from app.services.image_handler import upload_local_images_to_cdn
+        # Step 1: Pad images to 3:4 ratio (Ozon requirement, preserves content)
+        from app.services.image_handler import pad_to_ratio, upload_local_images_to_cdn
+        for p in local_paths:
+            pad_to_ratio(str(p), target_ratio=(3, 4))
+        # Step 2: Upload to GitHub CDN
         cdn_urls = await upload_local_images_to_cdn([str(p) for p in local_paths])
         image_urls = cdn_urls if cdn_urls else [f"/static/uploads/{p.name}" for p in local_paths]
         if not cdn_urls:
