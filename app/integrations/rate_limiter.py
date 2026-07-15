@@ -29,10 +29,10 @@ class OzonRateLimiter:
         # Load persisted cooldown from file (survives restart)
         self._cooldown_file = "ozon_cooldown.txt"
         self._cooldown_until: float = self._load_cooldown()
-       self._cooldown_seconds: float = 30.0  # doubles on each 429
-       self._lock = asyncio.Lock()
+        self._cooldown_seconds: float = 30.0  # doubles on each 429
+        self._lock = asyncio.Lock()
 
-   def _load_cooldown(self) -> float:
+    def _load_cooldown(self) -> float:
         try:
             with open(self._cooldown_file) as f:
                 return float(f.read().strip())

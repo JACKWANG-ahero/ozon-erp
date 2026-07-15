@@ -1,0 +1,37 @@
+<h1 class="text-2xl font-bold mb-6">🔍 类目自动识别</h1>
+<div class="max-w-2xl bg-white rounded-lg shadow p-6">
+    <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800 mb-4">
+        💡 输入商品名称，Ozon API 自动推荐类目ID。
+    </div>
+    <form method="post" action="/categories/classify" class="space-y-4">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">商品名称 *</label>
+            <input type="text" name="name" required class="w-full border rounded px-3 py-2 text-sm"
+                   placeholder="例如：Платье женское / Набор для вышивания">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">描述（可选）</label>
+            <input type="text" name="description" class="w-full border rounded px-3 py-2 text-sm"
+                   placeholder="Краткое описание...">
+        </div>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium">🔍 查询</button>
+    </form>
+</div>
+
+{% if classify_results %}
+<div class="max-w-2xl bg-white rounded-lg shadow p-6 mt-4">
+    <h2 class="text-lg font-semibold mb-3">📋 类目匹配结果: "{{ classify_name }}"</h2>
+    <div class="space-y-2">
+        {% for r in classify_results %}
+        <div class="p-3 bg-green-50 border border-green-200 rounded text-sm">
+            <span class="font-mono font-bold text-blue-700">{{ r.category_id }}</span>
+            <span class="mx-2">—</span>
+            <span>{{ r.title }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% if not classify_results %}
+    <p class="text-gray-400">未找到匹配类目，请尝试其他名称。</p>
+    {% endif %}
+</div>
+{% endif %}

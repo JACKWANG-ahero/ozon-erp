@@ -254,8 +254,8 @@ class ProductService:
             if not r:
                 failed += 1
                 p.status = "import_error"
-                p.import_errors = {"errors": [{"code": "NO_RESULT", "message": "Ozon 未返回此商品的结�?}]}
-                errors.append({"offer_id": p.offer_id, "errors": [{"code": "NO_RESULT", "message": "Ozon 未返回此商品的结�?}]})
+                p.import_errors = {"errors": [{"code": "NO_RESULT", "message": "Ozon api returned no result for this product"}]}
+                errors.append({"offer_id": p.offer_id, "errors": [{"code": "NO_RESULT", "message": "Ozon api returned no result"}]})
             elif r.get("errors"):
                 failed += 1
                 p.status = "import_error"
